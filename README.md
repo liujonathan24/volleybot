@@ -19,9 +19,14 @@ Volleyball environment structure:
 
 
 # Installation Instructions:
-```conda env create -f environment.yml
-conda activate volleybot```
+```
+conda env create -f environment.yml 
+conda activate volleybot
+```
 
+# Testing Instructions:
+From within the volleybot folder, run:
+``` python -m agents.test```
 
 
 
