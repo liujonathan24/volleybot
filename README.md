@@ -2,20 +2,17 @@ Initial documentation on the Robot Volleyball project and environment.
 
 Volleyball environment structure:
 - VolleyballEnv / 
-    - env.py
-    - help /
-        help
-        help
-        help
-        load
+    - envs/
+    - wrappers/ 
 - Agents / 
+    - test.py
     - VolleyAgent / 
         - train.py
     - CVBaseline /
         - train.py
     - evaluate.py
 - README.md
-- requirements.txt
+- environment.yml
 
 
 # Installation Instructions:
