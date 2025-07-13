@@ -1,0 +1,29 @@
+<mujoco>
+  
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1=".1 .2 .3"
+     rgb2=".2 .3 .4" width="300" height="300" mark="none"/>
+    <material name="grid" texture="grid" texrepeat="1 1"
+	    texuniform="true" reflectance=".2"/>
+	    
+    <material name="net_material" rgba=".8 .8 .8 1" shininess="0.1"/>
+    <material name="pole_material" rgba=".5 .5 .5 1" shininess="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light name="light" pos="0 0 1"/>
+    <geom name="floor" type="plane" pos="0 0 0" size=".25 .5 .1" rgba="1 1 1 1"/>
+    <camera name="fixed" pos="1 0 .25" xyaxes=".75 0 0 0 .05 .95"/>
+
+    <body name="ball" pos="0 0.25 0.2">
+      <include file="ball.xml"/>
+    </body>  
+
+    <body name="robot" pos="0 -0.25 0.2">
+	    <include file="robot.xml"/>
+    </body>
+
+    <include file="net.xml"/>
+
+  </worldbody>
+</mujoco>

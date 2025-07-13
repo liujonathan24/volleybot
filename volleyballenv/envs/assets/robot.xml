@@ -1,0 +1,5 @@
+<body name="robot">
+    <freejoint name="robot"/>
+    <geom name="robot" size=".05" rgba="1 1 0 1"/>
+</body>
+
