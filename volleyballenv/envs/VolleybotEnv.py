@@ -15,6 +15,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     def __init__(self, episode_length, obs_space=["bounding_box", "camera"], noise = False, random_seed=42, **kwargs):
         utils.EzPickle.__init__(self)
         random.seed(random_seed)
+        np.random.seed(random_seed)
 
         court_path = os.path.join(os.path.dirname(__file__), "assets", "court.xml")
 
@@ -91,38 +92,43 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # calculate trajectory of ball
 
     def _init_ball(self):
+        """
+        Set initial properties of the ball such that:
+        - The ball spawns in randomly in the playing area.
+        - The ball's velocity is set such that the ball clears the net and 
+        lands in a random location in the playing area on the other side of the net.
+        """
 
-        # TODO: AVOID THE NET LOL
-
-        width = 0.25
+        width  = 0.25
         length = 0.5
-        net_height = 0.135
-        ball_radius = 0.02
-        min_height = net_height + ball_radius
-        init_x_pos, init_y_pos = random.uniform(-width, width), random.uniform(length, 0)
-        self.data.joint("ball").qpos = [init_x_pos, init_y_pos, 0, 0, 0, 0, 0]
-        # self.data.joint("ball").qpos = [0, init_x_pos, init_y_pos, 0, 0, 0, 0]
-        
-        final_x_pos, final_y_pos = random.uniform(-width, width), random.uniform(-length, 0)
-        
-        random_max_height = random.uniform(min_height, 0.5)
-        airtime = np.sqrt(2*random_max_height/9.81)
-        print(final_x_pos, final_y_pos, airtime/2)
-        init_z_vel = 9.81*airtime/2
-        init_x_vel = (final_x_pos-init_x_pos)/airtime
-        init_y_vel = (final_y_pos-init_y_pos)/airtime
-        
-        #z_vel-9.81t=0
-        # t=np.sqrt(random/9.81*2)
-        self.data.joint("ball").qvel = [init_x_vel,init_y_vel,init_z_vel, 0, 0, 0]
-        # print(self.data.joint("ball").qpos)
-        # court_root = ET.parse(court_path).getroot()
-        # # court_obj[1][3].qpos = "0 0 1"
-        # print(dir(court_root[1][3]))
-        # static_ball = court_root.find(".//body")
-        # # static_ball.set('pos', )
-        # static_ball.set('vel', "0 0 1")
-        # # court_root.remove(static_ball)
+        net_height = 0.135 
+        g = 9.81
+        r = 0.02        
 
-        # # court_root[1][3].attrib["vel"] = "0 0 1" #("vel", "0 0 1")
-        # os.path.join(os.path.dirname(__file__), "assets", "court_temp.xml")
+        # Random initial and final positions
+        init_x_pos = random.uniform(-width, width)
+        init_y_pos = random.uniform(length/3, length)  # [0.1667, 0.5]
+        final_x_pos = random.uniform(-width, width)
+        final_y_pos = random.uniform(-length, length/3)  # [-0.5, 0.1667]
+
+        # Calculate the minimum "peak of trajectory" so that the trajectory still clears
+        # the net.
+        num = ((init_y_pos**2-init_y_pos)/16+1)**2-12*net_height**2/(init_y_pos**2-init_y_pos)
+        denom = 24*net_height/(init_y_pos**2-init_y_pos)
+        min_height = -num/denom
+
+        # Randomly choose a peak for the trajectory
+        random_max_height = np.random.random(min_height, 2*min_height)  
+        airtime = np.sqrt(8 * random_max_height / g)
+
+        # Calculate initial velocities
+        init_z_vel = g * airtime / 2
+        init_x_vel = (final_x_pos - init_x_pos) / airtime
+        init_y_vel = (final_y_pos - init_y_pos) / airtime
+
+        # Set positions and velocities
+        self.data.joint("ball").qpos = [init_x_pos, init_y_pos, r, 0, 0, 0, 0]
+        self.data.joint("ball").qvel = [init_x_vel, init_y_vel, init_z_vel, 0, 0, 0]
+        print(init_x_pos, init_y_pos)
+        print(final_x_pos, final_y_pos)
+        print(init_x_vel, init_y_vel, init_z_vel)
