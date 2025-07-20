@@ -1,5 +1,5 @@
 # Environment details:
-This is a to-scale volleyball court with the following dimensions:
+This is a to-scale volleyball court with the following (relative) dimensions:
 - Court width: 0.5 meter
 - Court length (complete): 1 meter
 - Net height: 0.135 meters

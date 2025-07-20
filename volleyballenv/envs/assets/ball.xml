@@ -1,5 +1,4 @@
 <body name="ball">
 	<freejoint name="ball"/>
-	<geom name="ball" size=".02" rgba="0 0 1 1" mass="0.0027"/>
+	<geom name="ball" size=".02" rgba="0 0 1 1" mass="0.0027" solref="0.02 0.3"/>
 </body>
-
