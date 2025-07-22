@@ -2,7 +2,7 @@ import numpy as np
 import os
 from gymnasium import utils, error, spaces
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
-import xml.etree.ElementTree as ET
+from utils import calculate_reward
 import random
 
 
@@ -12,7 +12,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         "render_fps": 100
     }
 
-    def __init__(self, episode_length, obs_space=["bounding_box", "camera"], noise = False, random_seed=42, **kwargs):
+    def __init__(self, episode_length, obs_space=["bounding_box", "camera"], reward_type=["proximity", "timing", "accuracy"], noise = False, random_seed=42, **kwargs):
         utils.EzPickle.__init__(self)
         random.seed(random_seed)
         np.random.seed(random_seed)
@@ -32,6 +32,8 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if not observation_space:
             raise ValueError("The observation space must include at least one of 'bounding_box' or 'camera'")
 
+        self.reward_type = reward_type
+
         MujocoEnv.__init__(
                 self, 
                 model_path=court_path, 
@@ -45,6 +47,12 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.step_number = 0
         self.episode_len = episode_length
         self.noise = noise 
+
+
+        # Helper attributes
+        self.hit_ball = False
+        self.previous_observations = []
+        self.previous_rewards = []
 
     def step(self, action):
         # Carry out one step 
@@ -82,7 +90,30 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # Ball position: print(np.array(self.data.joint("ball").qpos))
         return self.data.joint("ball").qpos
     
-    def _get_reward(self, obs):
+    def _get_reward(self):
+        reward = 0
+        if "proximity" in self.reward_type:
+            # Normalized to a maximum of 1
+            # distance is divided by half the width of the court to avoid imbalanced rewards
+            reward += 1 - np.linalg.dist(self.data.join("robot").qpos[:3], self.final_ball_loc)/0.25
+        if "timing" in self.reward_type:
+            # Add a reward for hitting the ball
+            # TODO: Think about how this will work. 
+            # simulation is currently 1 frame per 
+            # 0.02s, and it is unrealistic to have the
+            # arm hit the ball in 1 frame. Is this an issue?
+            if self.hit_ball:
+                reward += 50
+                self.hit_ball = False
+        if "accuracy" in self.reward_type:
+            # Check to see if the trajectory of the ball will land in the opponent court.
+            land_in_oponnent_side = self.landing_location(self.data.joint("ball"), "opponent")
+            if land_in_oponnent_side:
+                reward += 50
+
+
+        self.previous_rewards.append(reward)
+        return reward
         ball_joint = self.data.joint("ball")
         ball_qpos = np.array(ball_joint.qpos)
         ball_qvel = np.array(ball_joint.qvel)
@@ -103,7 +134,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         length = 0.5
         net_height = 0.135 
         g = 9.81
-        r = 0.02        
+        r = 0.02
 
         # Random initial and final positions
         init_x_pos = random.uniform(-width, width)
@@ -129,6 +160,29 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # Set positions and velocities
         self.data.joint("ball").qpos = [init_x_pos, init_y_pos, r, 0, 0, 0, 0]
         self.data.joint("ball").qvel = [init_x_vel, init_y_vel, init_z_vel, 0, 0, 0]
+
+        self.final_ball_loc = [init_x_vel, init_y_vel, init_z_vel]
         print(init_x_pos, init_y_pos)
         print(final_x_pos, final_y_pos)
         print(init_x_vel, init_y_vel, init_z_vel)
+
+
+    def _landing_location(ball_object, location="opponent"):
+        # Using kinematics, determines if a ball object will land in a designated area
+        ball_position = ball_object.qpos[:3]
+        ball_velocity = ball_object.qvel[:3]
+        z_vel = ball_velocity[2]
+        time_to_land = (-z_vel +np.sqrt(z_vel**2-2*9.81*z_vel))/9.81 
+        fin_x, fin_y = ball_position[:2] + time_to_land* ball_velocity[:2]
+
+        if location == "opponent":
+            # Check to make sure the ball will land in opponent side
+            x_valid = fin_x <= 0.25 and fin_x >= -0.25
+            y_valid = fin_y >=  0.5/3 and fin_y <= 0.5
+ 
+        elif location == "robot":
+            # Check to make sure the ball will land in robot's side
+            x_valid = fin_x <= 0.25 and fin_x >= -0.25
+            y_valid = fin_y <=  -0.5/3 and fin_y >= -0.5
+
+        return x_valid and y_valid
