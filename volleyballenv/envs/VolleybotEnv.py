@@ -1,10 +1,8 @@
 import numpy as np
 import os
-from gymnasium import utils, error, spaces
+from gymnasium import utils, spaces
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
-import mujoco
 import random
-import inspect
 
 
 class VolleybotEnv(MujocoEnv, utils.EzPickle):
@@ -63,7 +61,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.episode_len = episode_length
         self.noise = noise 
 
-
         # Helper attributes
         self.hit_ball = False
         self.previous_observations = []
@@ -76,7 +73,9 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
 
         obs = self._get_obs()
         reward = self._get_reward()
-        done = None # ball location outside grid.
+        #TODO: when the ball location is outside the grid or if the bounce will leave the grid
+        # or if the ball stops bouncing (just rolling)
+        done = None 
         truncated = self.step_number > self.episode_len
         return obs, reward, done, truncated, {}
 
@@ -85,20 +84,26 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.step_number = 0
         # load the ball in at a random speed and location each episode
         self._init_ball()
-        pass
 
     def _get_obs(self):
         # Observation of environment fed to agent. 
-        observation = np.array([])
-        # self._get_reward()
-        if "bounding_box" in self.obs_type:
-            pass
-        if "camera" in self.obs_type:
-            self.camera_obs = np.array(self.render())
-        # Ball position: print(np.array(self.data.joint("ball").qpos)) 
+        observation = {}
+        observation["ball_pos"] = np.array(self.data.joint("ball").qpos)
 
+        # Bounding box data 
+        if "bounding_box" in self.obs_type:
+            observation["bounding_box"] = None  #TODO:
+
+        # Camera observation
+        if "camera" in self.obs_type:
+            self.camera_obs = np.array(self.render()) 
+            observation["camera_obs"] = self.camera_obs
+
+        # Store in previous_observations (as a dict)
         self.previous_observations.append(observation)
-        return self.data.joint("ball").qpos
+
+        return observation
+    
     
     def _get_reward(self):
         reward = 0
@@ -172,43 +177,19 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
 
 
     def _landing_location(self, ball_object, location="opponent"):
-        # Using kinematics, determines if a ball object will land in a designated area
-        # ball_position = ball_object.qpos[:3]
-        # ball_velocity = ball_object.qvel[:3]
-        # z_vel = ball_velocity[2]
-        # time_to_land = (-z_vel +np.sqrt(z_vel**2-2*9.81*z_vel))/9.81 
-        # fin_x, fin_y = ball_position[:2] + time_to_land* ball_velocity[:2]
-
+        """
+        Using kinematics, determines if a ball object will land in a designated area
+        """
         ball_position = ball_object.qpos[:3]  # [x, y, z]
         ball_velocity = ball_object.qvel[:3]  # [vx, vy, vz]
         z_0 = ball_position[2]  # Initial z-position
         v_z = ball_velocity[2]  # Initial z-velocity
-        g = 9.81  # Gravity (m/s^2)
+        g = 9.81 
 
-        # Solve for time to land (z = 0) using quadratic formula: 0 = z_0 + v_z*t - (1/2)*g*t^2
-        # Quadratic form: (1/2)*g*t^2 - v_z*t - z_0 = 0
-        # Or: (g/2)*t^2 - v_z*t - z_0 = 0
-        a = g / 2
-        b = -v_z
-        c = -z_0
-        discriminant = b**2 - 4 * a * c
+        time_to_land = (-v_z + np.sqrt(v_z**2 + 2 * g * z_0)) / g
 
-        # Check if the ball can reach z=0 (discriminant >= 0)
-        if discriminant < 0:
-            return False  # Ball doesn't reach the ground (e.g., upward trajectory with insufficient height)
-
-        # Use quadratic formula: t = (-b ± sqrt(b^2 - 4ac)) / (2a)
-        # Take the positive root (time must be positive)
-        t = (-b + np.sqrt(discriminant)) / (2 * a)
-
-        # If time is negative or invalid, the ball won't land meaningfully
-        if t <= 0:
-            return False
-
-        # Calculate landing position (x, y) assuming no acceleration in x, y
-        fin_x = ball_position[0] + ball_velocity[0] * t
-        fin_y = ball_position[1] + ball_velocity[1] * t
-
+        fin_x = ball_position[0] + ball_velocity[0] * time_to_land
+        fin_y = ball_position[1] + ball_velocity[1] * time_to_land
 
         if location == "opponent":
             # Check to make sure the ball will land in opponent side
