@@ -84,6 +84,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # Reset model to original state. 
         self.step_number = 0
         # load the ball in at a random speed and location each episode
+        self._init_ball()
         pass
 
     def _get_obs(self):
@@ -93,15 +94,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "bounding_box" in self.obs_type:
             pass
         if "camera" in self.obs_type:
-            # self.render()
-            # print(dir(self))
-            # print(help(self.render))
-
-            # sig = inspect.signature(self.render)
-            # print(sig)
-            # for name, param in sig.parameters.items():
-            #     print(f"Parameter: {name}, Kind: {param.kind}, Default: {param.default}")
-
             self.camera_obs = np.array(self.render())
         # Ball position: print(np.array(self.data.joint("ball").qpos)) 
 
@@ -128,7 +120,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             land_in_oponnent_side = self._landing_location(self.data.joint("ball"), "opponent")
             if land_in_oponnent_side:
                 reward += 50
-
 
         self.previous_rewards.append(reward)
         return reward
@@ -172,20 +163,52 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.data.joint("ball").qpos = [init_x_pos, init_y_pos, r, 0, 0, 0, 0]
         self.data.joint("ball").qvel = [init_x_vel, init_y_vel, init_z_vel, 0, 0, 0]
 
-        self.final_ball_loc = [init_x_vel, init_y_vel, init_z_vel]
-        print(init_x_pos, init_y_pos)
-        print(final_x_pos, final_y_pos)
-        print(init_x_vel, init_y_vel, init_z_vel)
+        self.final_ball_loc = [init_x_pos, init_y_pos, 0.02]
+        print("Ball Initiation Statistics: ")
+        print("Initial position of the ball: ", [init_x_pos, init_y_pos])
+        print("Projected landing position of the ball: ", [final_x_pos, final_y_pos])
+        print("Initial velocity of the ball: ", [float(i) for i in [init_x_vel, init_y_vel, init_z_vel]])
+        print()
 
 
     def _landing_location(self, ball_object, location="opponent"):
         # Using kinematics, determines if a ball object will land in a designated area
-        return False
-        ball_position = ball_object.qpos[:3]
-        ball_velocity = ball_object.qvel[:3]
-        z_vel = ball_velocity[2]
-        time_to_land = (-z_vel +np.sqrt(z_vel**2-2*9.81*z_vel))/9.81 
-        fin_x, fin_y = ball_position[:2] + time_to_land* ball_velocity[:2]
+        # ball_position = ball_object.qpos[:3]
+        # ball_velocity = ball_object.qvel[:3]
+        # z_vel = ball_velocity[2]
+        # time_to_land = (-z_vel +np.sqrt(z_vel**2-2*9.81*z_vel))/9.81 
+        # fin_x, fin_y = ball_position[:2] + time_to_land* ball_velocity[:2]
+
+        ball_position = ball_object.qpos[:3]  # [x, y, z]
+        ball_velocity = ball_object.qvel[:3]  # [vx, vy, vz]
+        z_0 = ball_position[2]  # Initial z-position
+        v_z = ball_velocity[2]  # Initial z-velocity
+        g = 9.81  # Gravity (m/s^2)
+
+        # Solve for time to land (z = 0) using quadratic formula: 0 = z_0 + v_z*t - (1/2)*g*t^2
+        # Quadratic form: (1/2)*g*t^2 - v_z*t - z_0 = 0
+        # Or: (g/2)*t^2 - v_z*t - z_0 = 0
+        a = g / 2
+        b = -v_z
+        c = -z_0
+        discriminant = b**2 - 4 * a * c
+
+        # Check if the ball can reach z=0 (discriminant >= 0)
+        if discriminant < 0:
+            return False  # Ball doesn't reach the ground (e.g., upward trajectory with insufficient height)
+
+        # Use quadratic formula: t = (-b ± sqrt(b^2 - 4ac)) / (2a)
+        # Take the positive root (time must be positive)
+        t = (-b + np.sqrt(discriminant)) / (2 * a)
+
+        # If time is negative or invalid, the ball won't land meaningfully
+        if t <= 0:
+            return False
+
+        # Calculate landing position (x, y) assuming no acceleration in x, y
+        fin_x = ball_position[0] + ball_velocity[0] * t
+        fin_y = ball_position[1] + ball_velocity[1] * t
+
 
         if location == "opponent":
             # Check to make sure the ball will land in opponent side

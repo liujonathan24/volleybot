@@ -1,11 +1,11 @@
 <mujoco>
   
   <asset>
-    <texture name="grid" type="2d" builtin="checker" rgb1=".1 .2 .3"
-     rgb2=".2 .3 .4" width="10" height="10" mark="none"/>
-    <material name="grid" texture="grid" texrepeat="1 1"
-	    texuniform="true" reflectance=".2"/>
+    <texture name="grid" type="2d" builtin="checker" rgb1=".1 .2 .3" rgb2=".2 .3 .4" width="512" height="512" mark="none"/>
+    <material name="grid" texture="grid" texrepeat="50 50" texuniform="true" reflectance=".2"/>
 	    
+    <texture name="skybox" type="skybox" builtin="gradient" rgb1="0.4 0.6 1" rgb2="0.1 0.3 0.8" width="512" height="512"/>
+    
     <material name="net_material" rgba=".8 .8 .8 1" shininess="0.1"/>
     <material name="pole_material" rgba=".5 .5 .5 1" shininess="0.2"/>
   </asset>

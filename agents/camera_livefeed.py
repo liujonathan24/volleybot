@@ -16,7 +16,7 @@ print("Observation space:", env.observation_space)
 
 
 env.step([])
-cv2.namedWindow("Volleybot Camera Feed", cv2.WINDOW_NORMAL)
+cv2.namedWindow("Volleybot Robot Feed", cv2.WINDOW_NORMAL)
 
 # Simulation loop
 for i in range(10000):

@@ -1,6 +1,12 @@
 <body name="robot">
     <freejoint name="robot"/>
     <geom name="robot" size=".05" rgba="1 1 0 1"/>
-    <camera name="robot_camera" mode="fixed"/>
+    <!-- <body name="robot_frame" pos="0 0 0"> -->
+      <!--
+      Put the robot file in robot_frame.xml under assets and then 
+      it will populate here. -->
+      <!-- <include file="robot_frame.xml"/>
+    </body>  -->
+    <camera name="robot_camera" mode="fixed" pos="0 0 0.1" euler="90 0 0"/>
 </body>
 
