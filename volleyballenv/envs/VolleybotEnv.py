@@ -73,9 +73,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
 
         obs = self._get_obs()
         reward = self._get_reward()
-        #TODO: when the ball location is outside the grid or if the bounce will leave the grid
-        # or if the ball stops bouncing (just rolling)
-        done = None 
+        done = self._get_done()
         truncated = self.step_number > self.episode_len
         return obs, reward, done, truncated, {}
 
@@ -202,3 +200,9 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             y_valid = fin_y <=  -0.5/3 and fin_y >= -0.5
 
         return x_valid and y_valid
+    
+    def _get_done(self):
+        done = False
+        if not self._landing_location(self, self.data.joint("ball"), location="opponent") and not self._landing_location(self, self.data.joint("ball"), location="robot"):
+            done = True
+        return done
