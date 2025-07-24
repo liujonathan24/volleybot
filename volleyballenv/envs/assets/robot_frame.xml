@@ -1,38 +1,25 @@
-<mujoco model="really_simple_car">
-    <asset>
-        <mesh name="base" file="base.stl" />
-        <mesh name="frontleft_wheel" file="frontleft_wheel.stl" />
-        <mesh name="frontright_wheel" file="frontright_wheel.stl"/>
-        <mesh name="backleft_wheel" file="backleft_wheel.stl" />
-        <mesh name="backright_wheel" file="backright_wheel.stl"/>
-        <material name="red" rgba="0.8 0.1 0.1 1"/>
-        <material name="blue" rgba="0.1 0.1 0.8 1"/>
-    </asset>
-    <worldbody>
-        <body name="base" pos="0 0 0.1">
-            <joint type="free"/>
-            <geom mesh="base" type="mesh" material="red"/>
-            <body name="frontleft_wheel">
-                <geom mesh="frontleft_wheel" type="mesh" material="blue"/>
-                <joint name="joint_frontleft_wheel" pos="0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
-            </body>
-            <body name="frontright_wheel">
-                <geom mesh="frontright_wheel" type="mesh" material="blue" />
-                <joint name="joint_frontright_wheel" pos="-0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
-            </body>
-            <body name="backleft_wheel">
-                <geom mesh="backleft_wheel" type="mesh" material="blue"/>
-                <joint name="joint_backleft_wheel" pos="0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
-            </body>
-            <body name="backright_wheel">
-                <geom mesh="backright_wheel" type="mesh" material="blue"/>
-                <joint name="joint_backright_wheel" pos="-0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
-            </body>
-        </body>
-    </worldbody>
-    <actuator>
-        <motor name="left_motor" joint="joint_frontleft_wheel" gear="0.00001" ctrlrange="-20 20" ctrllimited="true" />
-        <motor name="right_motor" joint="joint_frontright_wheel" gear="0.00001" ctrlrange="-20 20" ctrllimited="true"/>
-    </actuator>
-</mujoco>
->>>>>>> Stashed changes
+<body name="base" pos="0 0 0.1">
+    <!-- <joint type="free"/> 
+    <inertial pos="0 0 0" mass="1.0" diaginertia="1 1 1"/>  -->
+
+    <geom mesh="base" type="mesh" material="red"/>
+    <body name="frontleft_wheel">
+        <geom mesh="frontleft_wheel" type="mesh" material="blue"/>
+        <joint name="joint_frontleft_wheel" pos="0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
+    </body>
+
+    <body name="frontright_wheel">
+        <geom mesh="frontright_wheel" type="mesh" material="blue" />
+        <joint name="joint_frontright_wheel" pos="-0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
+    </body>
+
+    <body name="backleft_wheel">
+        <geom mesh="backleft_wheel" type="mesh" material="blue"/>
+        <joint name="joint_backleft_wheel" pos="0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
+    </body>
+
+    <body name="backright_wheel">
+        <geom mesh="backright_wheel" type="mesh" material="blue"/>
+        <joint name="joint_backright_wheel" pos="-0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
+    </body>
+</body>

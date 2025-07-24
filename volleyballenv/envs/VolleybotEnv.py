@@ -44,7 +44,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
                     render_mode=render_mode, 
                     width=640, height=640,
             )
-        elif viewer == "machine":
+        elif viewer == "robot":
             MujocoEnv.__init__(
                     self, 
                     model_path=court_path, 
@@ -88,14 +88,115 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         observation = {}
         observation["ball_pos"] = np.array(self.data.joint("ball").qpos)
 
-        # Bounding box data 
-        if "bounding_box" in self.obs_type:
-            observation["bounding_box"] = None  #TODO:
+        self.camera_obs = np.array(self.render()) 
 
         # Camera observation
         if "camera" in self.obs_type:
-            self.camera_obs = np.array(self.render()) 
             observation["camera_obs"] = self.camera_obs
+
+        # Bounding box data 
+        # if "bounding_box" in self.obs_type:
+            # observation["bounding_box"] = None  #TODO:
+
+            # Camera parameters
+            # ball_pos = self.data.joint("ball").qpos[:3]
+            
+            # fovy = np.deg2rad(45)  # Assume fovy=45 degrees (adjust if specified in XML)
+            # focal_length = 640 / (2 * np.tan(fovy / 2))  # ~771.8 pixels
+            # cx, cy = 320, 320  # Principal point (center of 640x640 image)
+            # ball_radius = 0.02  # Ball radius in meters
+
+            # # Camera's world pose
+            # robot_pos = self.data.joint("robot").qpos[:3]
+            # cam_local_pos = np.array([0, 0, 0.1])   # From <camera pos="0 0 0.1">
+            # cam_pos = robot_pos + cam_local_pos     # World position: [0, -0.25, 0.3]
+            
+            # # Camera orientation (euler="90 0 0" -> rotation around x-axis)
+            # R_cam = np.array([
+            #     [1, 0, 0],
+            #     [0, 0, -1],
+            #     [0, 1, 0]
+            # ])
+            # R_cam_T = R_cam.T  # Inverse rotation (transpose)
+
+            # # Transform ball to camera frame
+            # ball_rel = ball_pos - cam_pos  # Relative position
+            # ball_cam = R_cam_T @ ball_rel  # Rotate to camera frame: [x_b, z_b - 0.3, -(y_b + 0.25)]
+            # x_c, y_c, z_c = ball_cam
+
+            # # Check if ball is in front of camera
+            # if z_c <= 0:
+            #     observation["bounding_box"] = np.array([0, 0, 0, 0])  # Invalid bounding box
+            # else:
+            #     # Project to 2D
+            #     u = cx + focal_length * x_c / z_c
+            #     v = cy - focal_length * y_c / z_c  # Negative for image y-axis (downward)
+
+            #     # Approximate ball radius in pixels
+            #     r_pixels = focal_length * ball_radius / z_c
+
+            #     # Bounding box: [u_min, v_min, u_max, v_max]
+            #     u_min = np.clip(u - r_pixels, 0, 640)
+            #     v_min = np.clip(v - r_pixels, 0, 640)
+            #     u_max = np.clip(u + r_pixels, 0, 640)
+            #     v_max = np.clip(v + r_pixels, 0, 640)
+            #     observation["bounding_box"] = np.array([u_min, v_min, u_max, v_max])
+
+
+
+        # Bounding box data
+        if "bounding_box" in self.obs_type:
+            ball_pos = self.data.joint("ball").qpos[:3]
+
+            # Camera parameters (assuming 640x640 image resolution)
+            fovy = np.deg2rad(45)
+            focal_length = 640 / (2 * np.tan(fovy / 2)) # ~771.8 pixels
+            cx, cy = 320, 320 # Principal point (center of 640x640 image)
+            ball_radius = 0.02 # Ball radius in meters
+
+            # Camera's world pose
+            robot_pos = self.data.joint("robot").qpos[:3]
+            cam_local_pos = np.array([0, 0, 0.005]) # From <camera pos="0 0 0.1">
+            cam_pos = robot_pos + cam_local_pos # World position: [0, -0.25, 0.3] (example values)
+
+            cam_xmat = self.data.camera('robot_camera').xmat.reshape(3, 3) # Matrix from camera frame to world frame
+            R_world_to_cam = cam_xmat #.T # Transpose to get world frame to camera frame
+
+            # Transform ball to camera frame
+            ball_rel_pos = ball_pos - cam_pos # Relative position in world frame
+            ball_cam = R_world_to_cam @ ball_rel_pos # Rotate to camera frame
+            x_c, y_c, z_c = ball_cam # x_c: camera right, y_c: camera down, z_c: camera forward
+
+            # Check if ball is in front of camera (positive z_c for forward in camera frame)
+            if z_c <= 0:
+                observation["bounding_box"] = np.array([0, 0, 0, 0]) # Ball behind or on camera plane
+            else:
+                z_c = np.abs(z_c)
+                # Project to 2D image plane (u, v)
+                # u increases to the right, v increases downwards
+                u = cx + focal_length * x_c / z_c
+                v = cy + focal_length * y_c / z_c # This was `-` before, now `+` because y_c is already "camera down"
+
+                # Approximate ball radius in pixels
+                r_pixels = focal_length * ball_radius / z_c
+
+                # Bounding box coordinates: [u_min, v_min, u_max, v_max]
+                u_min = u - r_pixels
+                v_min = v - r_pixels
+                u_max = u + r_pixels
+                v_max = v + r_pixels
+
+                # Clip coordinates to image boundaries (0 to 640 for a 640x640 image)
+                u_min = np.clip(u_min, 0, 640)
+                v_min = np.clip(v_min, 0, 640)
+                u_max = np.clip(u_max, 0, 640)
+                v_max = np.clip(v_max, 0, 640)
+
+                # Ensure valid bounding box (e.g., if clipped too much)
+                if u_max <= u_min or v_max <= v_min:
+                    observation["bounding_box"] = np.array([0, 0, 0, 0])
+                else:
+                    observation["bounding_box"] = np.array([u_min, v_min, u_max, v_max])
 
         # Store in previous_observations (as a dict)
         self.previous_observations.append(observation)
@@ -203,6 +304,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     
     def _get_done(self):
         done = False
-        if not self._landing_location(self, self.data.joint("ball"), location="opponent") and not self._landing_location(self, self.data.joint("ball"), location="robot"):
+        if not self._landing_location(self.data.joint("ball"), location="opponent") and not self._landing_location(self.data.joint("ball"), location="robot"):
             done = True
         return done
