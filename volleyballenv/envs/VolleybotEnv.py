@@ -175,6 +175,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
                 self.hit_ball = False
         if "accuracy" in self.reward_type:
             # Check to see if the trajectory of the ball will land in the opponent court.
+            # TODO: fix so this is a onetime reward?
             land_in_oponnent_side = self._landing_location(self.data.joint("ball"), "opponent")
             if land_in_oponnent_side:
                 reward += 50
