@@ -28,7 +28,7 @@
       <include file="ball.xml"/>
     </body>  
 
-    <body name="robot" pos="0 -0.25 0.00506246">
+    <body name="robot" pos="0 -0.45 0.00506246">
 	    <include file="robot.xml"/>
     </body>
 

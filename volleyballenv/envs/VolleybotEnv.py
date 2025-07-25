@@ -24,15 +24,15 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         frame_skip = 5
 
         self.obs_type = obs_space
-        observation_space = {}
+        observation_space = spaces.Dict()
         if "bounding_box" in obs_space:
             # [ball bounding box min x, max x, min y, max y]
             observation_space["bounding_box"] = spaces.Box(low=0, high=1.0, shape=(4, 1), dtype=np.float32)
         if "camera" in obs_space:
             # 640 by 640 pixel grayscale image.
-            observation_space["camera"] = spaces.Box(low=0, high=1.0, shape=(640, 640), dtype=np.float32)
+            observation_space["camera_obs"] = spaces.Box(low=0, high=1.0, shape=(640, 640, 3), dtype=np.float32)
         if not observation_space:
-            raise ValueError("The observation space must include at least one of 'bounding_box' or 'camera'")
+            raise ValueError("The observation space must include at least one of 'bounding_box' or 'camera_obs'")
 
         self.reward_type = reward_type
         if viewer == "human":
@@ -77,16 +77,21 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         truncated = self.step_number > self.episode_len
         return obs, reward, done, truncated, {}
 
-    def reset_model(self):
+    # def reset_model(self):
+    def reset(self, **kwargs):
         # Reset model to original state. 
         self.step_number = 0
         # load the ball in at a random speed and location each episode
         self._init_ball()
+        self.data.joint("robot").qpos[:3] = [0, -0.25, 0.00506246]
+        self.data.joint("robot").qvel[:6] = [0, 0, 0, 0, 0, 0]
+        return self._get_obs(), {} # observation, logging info
 
     def _get_obs(self):
         # Observation of environment fed to agent. 
         observation = {}
-        observation["ball_pos"] = np.array(self.data.joint("ball").qpos)
+        # observation["ball_pos"] = np.array(self.data.joint("ball").qpos)
+        # observation["robot_pos"] = np.array(self.data.joint("robot").qpos)
 
         self.camera_obs = np.array(self.render()) 
 
@@ -94,77 +99,26 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "camera" in self.obs_type:
             observation["camera_obs"] = self.camera_obs
 
-        # Bounding box data 
-        # if "bounding_box" in self.obs_type:
-            # observation["bounding_box"] = None  #TODO:
-
-            # Camera parameters
-            # ball_pos = self.data.joint("ball").qpos[:3]
-            
-            # fovy = np.deg2rad(45)  # Assume fovy=45 degrees (adjust if specified in XML)
-            # focal_length = 640 / (2 * np.tan(fovy / 2))  # ~771.8 pixels
-            # cx, cy = 320, 320  # Principal point (center of 640x640 image)
-            # ball_radius = 0.02  # Ball radius in meters
-
-            # # Camera's world pose
-            # robot_pos = self.data.joint("robot").qpos[:3]
-            # cam_local_pos = np.array([0, 0, 0.1])   # From <camera pos="0 0 0.1">
-            # cam_pos = robot_pos + cam_local_pos     # World position: [0, -0.25, 0.3]
-            
-            # # Camera orientation (euler="90 0 0" -> rotation around x-axis)
-            # R_cam = np.array([
-            #     [1, 0, 0],
-            #     [0, 0, -1],
-            #     [0, 1, 0]
-            # ])
-            # R_cam_T = R_cam.T  # Inverse rotation (transpose)
-
-            # # Transform ball to camera frame
-            # ball_rel = ball_pos - cam_pos  # Relative position
-            # ball_cam = R_cam_T @ ball_rel  # Rotate to camera frame: [x_b, z_b - 0.3, -(y_b + 0.25)]
-            # x_c, y_c, z_c = ball_cam
-
-            # # Check if ball is in front of camera
-            # if z_c <= 0:
-            #     observation["bounding_box"] = np.array([0, 0, 0, 0])  # Invalid bounding box
-            # else:
-            #     # Project to 2D
-            #     u = cx + focal_length * x_c / z_c
-            #     v = cy - focal_length * y_c / z_c  # Negative for image y-axis (downward)
-
-            #     # Approximate ball radius in pixels
-            #     r_pixels = focal_length * ball_radius / z_c
-
-            #     # Bounding box: [u_min, v_min, u_max, v_max]
-            #     u_min = np.clip(u - r_pixels, 0, 640)
-            #     v_min = np.clip(v - r_pixels, 0, 640)
-            #     u_max = np.clip(u + r_pixels, 0, 640)
-            #     v_max = np.clip(v + r_pixels, 0, 640)
-            #     observation["bounding_box"] = np.array([u_min, v_min, u_max, v_max])
-
-
-
         # Bounding box data
         if "bounding_box" in self.obs_type:
             ball_pos = self.data.joint("ball").qpos[:3]
 
-            # Camera parameters (assuming 640x640 image resolution)
+            # Camera parameters 
             fovy = np.deg2rad(45)
             focal_length = 640 / (2 * np.tan(fovy / 2)) # ~771.8 pixels
-            cx, cy = 320, 320 # Principal point (center of 640x640 image)
+            cx, cy = 320, 320 # center
             ball_radius = 0.02 # Ball radius in meters
 
             # Camera's world pose
             robot_pos = self.data.joint("robot").qpos[:3]
-            cam_local_pos = np.array([0, 0, 0.005]) # From <camera pos="0 0 0.1">
-            cam_pos = robot_pos + cam_local_pos # World position: [0, -0.25, 0.3] (example values)
+            cam_local_pos = np.array([0, 0, 0.005]) 
+            cam_pos = robot_pos + cam_local_pos 
 
             cam_xmat = self.data.camera('robot_camera').xmat.reshape(3, 3) # Matrix from camera frame to world frame
-            R_world_to_cam = cam_xmat #.T # Transpose to get world frame to camera frame
 
             # Transform ball to camera frame
             ball_rel_pos = ball_pos - cam_pos # Relative position in world frame
-            ball_cam = R_world_to_cam @ ball_rel_pos # Rotate to camera frame
+            ball_cam = cam_xmat @ ball_rel_pos # Rotate to camera frame
             x_c, y_c, z_c = ball_cam # x_c: camera right, y_c: camera down, z_c: camera forward
 
             # Check if ball is in front of camera (positive z_c for forward in camera frame)
@@ -175,7 +129,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
                 # Project to 2D image plane (u, v)
                 # u increases to the right, v increases downwards
                 u = cx + focal_length * x_c / z_c
-                v = cy + focal_length * y_c / z_c # This was `-` before, now `+` because y_c is already "camera down"
+                v = cy + focal_length * y_c / z_c 
 
                 # Approximate ball radius in pixels
                 r_pixels = focal_length * ball_radius / z_c
@@ -197,10 +151,10 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
                     observation["bounding_box"] = np.array([0, 0, 0, 0])
                 else:
                     observation["bounding_box"] = np.array([u_min, v_min, u_max, v_max])
+            observation["bounding_box"] = observation["bounding_box"].reshape((4,1))
 
-        # Store in previous_observations (as a dict)
         self.previous_observations.append(observation)
-
+        # print([type(m) for o,m in observation.items()])
         return observation
     
     
@@ -224,6 +178,12 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             land_in_oponnent_side = self._landing_location(self.data.joint("ball"), "opponent")
             if land_in_oponnent_side:
                 reward += 50
+        
+        # set this as a default reward.
+        # if the robot leaves the arena
+        robot_x, robot_y = self.data.joint("robot").qpos[:2]
+        if robot_x > 0.25 or robot_x < -0.25 or robot_y > 0.5 or robot_y < -0.5:
+            reward -= 100
 
         self.previous_rewards.append(reward)
         return reward
@@ -268,11 +228,11 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.data.joint("ball").qvel = [init_x_vel, init_y_vel, init_z_vel, 0, 0, 0]
 
         self.final_ball_loc = [init_x_pos, init_y_pos, 0.02]
-        print("Ball Initiation Statistics: ")
-        print("Initial position of the ball: ", [init_x_pos, init_y_pos])
-        print("Projected landing position of the ball: ", [final_x_pos, final_y_pos])
-        print("Initial velocity of the ball: ", [float(i) for i in [init_x_vel, init_y_vel, init_z_vel]])
-        print()
+        # print("Ball Initiation Statistics: ")
+        # print("Initial position of the ball: ", [init_x_pos, init_y_pos])
+        # print("Projected landing position of the ball: ", [final_x_pos, final_y_pos])
+        # print("Initial velocity of the ball: ", [float(i) for i in [init_x_vel, init_y_vel, init_z_vel]])
+        # print()
 
 
     def _landing_location(self, ball_object, location="opponent"):
@@ -305,5 +265,8 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     def _get_done(self):
         done = False
         if not self._landing_location(self.data.joint("ball"), location="opponent") and not self._landing_location(self.data.joint("ball"), location="robot"):
+            done = True
+        robot_x, robot_y = self.data.joint("robot").qpos[:2]
+        if robot_x > 0.25 or robot_x < -0.25 or robot_y > 0.5 or robot_y < -0.5:
             done = True
         return done
