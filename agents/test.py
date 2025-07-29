@@ -8,7 +8,7 @@ env = VolleybotEnv(100, obs_space=["bounding_box", "camera"], random_seed=0)
 
 # time.sleep(5)
 print(env.observation_space)
-for i in range(300):
+for i in range(1000000):
     # print(env._get_obs())
     env.step([1,-1])
 

@@ -21,7 +21,7 @@
 
   <worldbody>
     <light name="light" pos="0 0 1"/>
-    <geom name="floor" type="plane" pos="0 0 0" size=".25 .5 .1" rgba="1 1 1 1" solref="0.02 0.3" material="grid"/>
+    <geom name="floor" type="plane" pos="0 0 0" size=".25 .5 .1" rgba="1 1 1 1" solref="0.02 0.3" friction="3 0.005 0.0001" material="grid"/>
     <camera name="fixed" pos="1 0 .25" xyaxes=".75 0 0 0 .05 .95"/>
 
     <body name="ball" pos="0 0.25 0.2">
@@ -38,8 +38,8 @@
 
 <!-- Robot controls -->
   <actuator>
-      <motor name="left_motor" joint="joint_frontleft_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true" />
-      <motor name="right_motor" joint="joint_frontright_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true"/>
+      <motor name="left_motor" joint="joint_frontleft_wheel" gear="0.001" ctrlrange="-1 1" ctrllimited="true" />
+      <motor name="right_motor" joint="joint_frontright_wheel" gear="0.001" ctrlrange="-1 1" ctrllimited="true"/>
   </actuator>
 
 </mujoco>

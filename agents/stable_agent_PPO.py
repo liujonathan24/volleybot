@@ -28,7 +28,7 @@ print("Trained in ", t2-t1, " seconds.")
 # # TODO: log what experiment this goes with (same id as wandb maybe?)
 model.save(f"ppo_robot_{t_steps}steps") 
 
-# del model # remove to demonstrate saving and loading
+# del model # testing saving.
 
 # model = PPO.load("ppo_robot")
 

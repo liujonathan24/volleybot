@@ -16,7 +16,7 @@
     <body name="backleft_wheel">
         <geom mesh="backleft_wheel" type="mesh" material="blue"/>
         <joint name="joint_backleft_wheel" pos="0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
-    </body>
+    </body> 
 
     <body name="backright_wheel">
         <geom mesh="backright_wheel" type="mesh" material="blue"/>
