@@ -95,9 +95,9 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # Camera observation
         if "camera" in self.obs_type:
             if self.noise:
-                print(type(self.camera_obs[0][0][0]))
-                print(type(np.random.randint(-10, 10, size=self.camera_obs.shape)[0,0,0]))
                 self.camera_obs += np.random.randint(-10, 10, size=self.camera_obs.shape)
+                self.camera_obs = np.clip(self.camera_obs, 0, 255)
+                self.camera_obs = self.camera_obs.astype(np.uint8)
             observation["camera_obs"] = self.camera_obs
         # Bounding box data
         if "bounding_box" in self.obs_type:
