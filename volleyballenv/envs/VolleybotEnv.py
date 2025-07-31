@@ -97,23 +97,20 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             if self.noise:
                 self.camera_obs += np.random.randint(-10, 10, size=self.camera_obs.shape)
                 self.camera_obs = np.clip(self.camera_obs, 0, 255)
-                self.camera_obs = self.camera_obs.astype(np.uint8)
+            self.camera_obs = self.camera_obs.astype(np.uint8)
             observation["camera_obs"] = self.camera_obs
         # Bounding box data
         if "bounding_box" in self.obs_type:
             ball_pos = self.data.joint("ball").qpos[:3]
 
-            # Camera parameters 
-            fovy = np.deg2rad(45)
+            # Camera default parameters 
+            fovy = np.deg2rad(45) 
             focal_length = 640 / (2 * np.tan(fovy / 2)) # ~771.8 pixels
             cx, cy = 320, 320 # center
             ball_radius = 0.02 # Ball radius in meters
 
             # Camera's world pose
-            robot_pos = self.data.joint("robot").qpos[:3]
-            cam_local_pos = np.array([0, 0, 0.005]) 
-            cam_pos = robot_pos + cam_local_pos 
-
+            cam_pos = self.data.camera('robot_camera').xpos 
             cam_xmat = self.data.camera('robot_camera').xmat.reshape(3, 3) # Matrix from camera frame to world frame
 
             # Transform ball to camera frame
