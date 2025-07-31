@@ -10,7 +10,7 @@ glfw.init()
 # Initialize the environment
 env = VolleybotEnv(100, render_mode="rgb_array", 
                    obs_space=["bounding_box", "camera"], random_seed=0,
-                   viewer="robot")
+                   viewer="robot", noise=True)
 print("Episode length:", env.episode_len)
 print("Observation space:", env.observation_space)
 

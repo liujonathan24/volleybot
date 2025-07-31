@@ -90,15 +90,15 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     def _get_obs(self):
         # Observation of environment fed to agent. 
         observation = {}
-        # observation["ball_pos"] = np.array(self.data.joint("ball").qpos)
-        # observation["robot_pos"] = np.array(self.data.joint("robot").qpos)
-
-        self.camera_obs = np.array(self.render()) 
+        self.camera_obs = np.array(self.render(), dtype=np.int64) 
 
         # Camera observation
         if "camera" in self.obs_type:
+            if self.noise:
+                print(type(self.camera_obs[0][0][0]))
+                print(type(np.random.randint(-10, 10, size=self.camera_obs.shape)[0,0,0]))
+                self.camera_obs += np.random.randint(-10, 10, size=self.camera_obs.shape)
             observation["camera_obs"] = self.camera_obs
-
         # Bounding box data
         if "bounding_box" in self.obs_type:
             ball_pos = self.data.joint("ball").qpos[:3]
@@ -150,11 +150,13 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
                 if u_max <= u_min or v_max <= v_min:
                     observation["bounding_box"] = np.array([0, 0, 0, 0])
                 else:
-                    observation["bounding_box"] = np.array([u_min, v_min, u_max, v_max])
+                    box = [u_min, v_min, u_max, v_max]
+                    if self.noise:
+                        box = [val + np.random.randn(1).item()*5 for val in box]
+                    observation["bounding_box"] = np.array(box)
             observation["bounding_box"] = observation["bounding_box"].reshape((4,1))
 
         self.previous_observations.append(observation)
-        # print([type(m) for o,m in observation.items()])
         return observation
     
     
