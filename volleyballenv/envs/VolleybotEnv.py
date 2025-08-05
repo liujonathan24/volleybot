@@ -11,7 +11,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         "render_fps": 100
     }
 
-    def __init__(self, episode_length, 
+    def __init__(self, episode_length: int, 
                  render_mode = "human", obs_space=["bounding_box", "camera"], 
                  reward_type=["proximity", "timing", "accuracy"], noise=False, 
                  random_seed=42, viewer="human", **kwargs):
@@ -66,6 +66,8 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self._init_ball()
 
     def step(self, action):
+        """Carries out a step of the simulation as well as records
+        observations, rewards, done/truncated statuses."""
         # Carry out one step 
         self.do_simulation(action, self.frame_skip)
         self.step_number += 1
@@ -78,6 +80,8 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
 
 
     def reset(self, **kwargs):
+        """Resets the environment to a starting state 
+        (but not the same position as when the environment is initiated)"""
         # Reset model to original state. 
         self.step_number = 0
         # load the ball in at a random speed and location each episode
@@ -87,6 +91,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         return self._get_obs(), {} # observation, logging info
 
     def _get_obs(self):
+        """Returns the current observation for the state"""
         # Observation of environment fed to agent. 
         observation = {}
         self.camera_obs = np.array(self.render(), dtype=np.int64) 
@@ -157,6 +162,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     
     
     def _get_reward(self):
+        """Returns a reward for a given state."""
         reward = 0
         if "proximity" in self.reward_type:
             # Normalized to a maximum of 1
@@ -245,18 +251,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         g = 9.81 
 
         time_to_land = (v_z+np.sqrt(v_z**2+2*g*(z_0)))/g
-            
-        #     time_to_peak = v_z/9.81
-        #     max_height = z_0 + v_z/2*time_to_peak
-        # # time from peak_to_land = time from max height to 0.02 height
-        # height_diff = max_height - 0.02
-        # if height_diff < 0:
-        #     print(height_diff)
-        #     print(ball_position)
-        #     print(self.final_ball_loc)
-        #     assert 1 == 2
-        # time_to_ground = np.sqrt(height_diff*2/g)
-        # time_to_land = time_to_peak + time_to_ground
 
         fin_x = ball_position[0] + ball_velocity[0] * time_to_land
         fin_y = ball_position[1] + ball_velocity[1] * time_to_land
@@ -270,10 +264,13 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             # Check to make sure the ball will land in robot's side
             x_valid = fin_x <= 0.25 and fin_x >= -0.25
             y_valid = fin_y <=  -0.5/3 and fin_y >= -0.5
-        # print(fin_x, fin_y)
+
         return x_valid and y_valid
     
     def _get_done(self):
+        """Returns True when the ball will land outside
+        the playing area, or if the robot leaves the playing
+        area. """
         done = False
         if not self._landing_location(self.data.joint("ball"), location="opponent") and not self._landing_location(self.data.joint("ball"), location="robot"):
             print("Done due to landing position")
