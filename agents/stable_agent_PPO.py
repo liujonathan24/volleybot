@@ -26,7 +26,7 @@ t2 = time.time()
 print("Trained in ", t2-t1, " seconds.")
 
 # # TODO: log what experiment this goes with (same id as wandb maybe?)
-model.save(f"ppo_robot_{t_steps}steps") 
+model.save(f"models/ppo_robot_{t_steps}steps") 
 
 # del model # testing saving.
 
