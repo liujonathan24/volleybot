@@ -10,7 +10,7 @@ glfw.init()
 # Initialize the environment
 env = VolleybotEnv(100, render_mode="rgb_array", 
                    obs_space=["bounding_box", "camera"], random_seed=0,
-                   viewer="robot", noise=True)
+                   viewer="robot", noise=False)
 print("Episode length:", env.episode_len)
 print("Observation space:", env.observation_space)
 
@@ -44,7 +44,6 @@ for i in range(10000):
             y_min = int(bbox_info[1].item())
             x_max = int(bbox_info[2].item())
             y_max = int(bbox_info[3].item())
-            print(bbox_info)
 
             # Define color (BGR) and thickness for the bounding box
             color = (0, 255, 0)  # Green color
@@ -57,9 +56,11 @@ for i in range(10000):
         cv2.imshow("Volleybot Camera Feed", frame_bgr)
         
     
-    env.step([0,0])
+    obs, reward, done, truncated, _ = env.step([0,0])
+    if done:
+        env.reset()
     
-    time.sleep(0.25)
+    time.sleep(0.1)
     
     # Exit early by pressing 'q'
     if cv2.waitKey(1) & 0xFF == ord('q'):
