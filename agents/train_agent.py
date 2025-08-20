@@ -6,6 +6,7 @@ from stable_baselines3 import PPO
 from volleyballenv.envs.VolleybotEnv import VolleybotEnv
 
 def get_model(args, env):
+    #TODO: make wrappers for each model
     if args.model == "PPO":
         return PPO("MultiInputPolicy", env, 
                    verbose=1, 
@@ -32,7 +33,8 @@ def main(args):
                     viewer="robot")
     
     # Training loop:
-    model = models[args.model]("MultiInputPolicy", env, verbose=1, n_steps=256, batch_size=64, n_epochs=1)
+    model = get_model(args, env)
+    model.train() # add this function to wrappers so that it's easy to run 
 
 
 if __name__ == "__main__":
