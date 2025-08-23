@@ -1,6 +1,6 @@
 import numpy as np
 
-class model():
+class agent():
     def __init__(self):
         pass
 

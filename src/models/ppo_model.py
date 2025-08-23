@@ -1,0 +1,37 @@
+import numpy as np
+from stable_baselines3 import PPO
+from src.models.agent import agent
+
+
+class ppo_agent(agent):
+    def __init__(self):
+        pass
+
+    def train(self, batch_size, *kwargs):
+        pass
+
+# def train_PPO(env):
+#     pass
+
+
+# def main():
+#     # Initialize the environment
+#     env = VolleybotEnv(100, render_mode="rgb_array", 
+#                     obs_space=["bounding_box", "camera"], random_seed=0,
+#                     viewer="robot")
+
+#     # Parallel environments
+#     # vec_env = make_vec_env("CartPole-v1", n_envs=4)
+
+#     model = PPO("MultiInputPolicy", env, verbose=1, n_steps=256, batch_size=64, n_epochs=1)
+#     t1 = time.time()
+#     t_steps = 32768
+#     model.learn(total_timesteps=t_steps) # 32768
+#     t2 = time.time()
+#     print("Trained in ", t2-t1, " seconds.")
+
+#     # TODO: log what experiment this goes with (same id as wandb maybe?)
+#     model.save(f"models/ppo_robot_{t_steps}steps") 
+
+# if __name__ == "__main__":
+#     main()
