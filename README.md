@@ -1,3 +1,6 @@
+# VOLLEYBOT:
+A Reinforcement Learning environment for teaching quad-wheeled robots to play volleyball.
+
 Initial documentation on the Robot Volleyball project and environment.
 
 Volleyball environment structure:
