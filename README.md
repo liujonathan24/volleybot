@@ -4,13 +4,13 @@ A Reinforcement Learning environment for teaching quad-wheeled robots to play vo
 Currently undergoing refactoring to use a custom, lightweight C/C++ physics simulator. 
 
 Todo elements:
-[X] Kinematics (verlet integration)
-[X] C++ integration for creating objects
-[X] lighting (verlet integration)
-[X] basic material properties
-[X] camera angle mathematics
-[] Collision detection & processing
-[] Python bindings
+- [x] Kinematics (verlet integration)
+- [x] C++ integration for creating objects
+- [x] lighting (verlet integration)
+- [x] basic material properties
+- [x] camera angle mathematics
+- [] Collision detection & processing
+- [] Python bindings
 
 
 
