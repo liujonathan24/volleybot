@@ -3,6 +3,10 @@
 
 #include "vec3.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Updates position and velocity using the Velocity Verlet integration method.
  * This is a core function of the physics engine.
@@ -12,5 +16,9 @@
  * @param dt The time step duration in seconds.
  */
 void update_kinematics(Vec3* position, Vec3* velocity, const Vec3* acceleration, float dt);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // KINEMATICS_H

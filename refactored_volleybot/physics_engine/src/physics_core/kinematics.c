@@ -1,4 +1,4 @@
-#include "kinematics.h"
+#include "physics_core/kinematics.h"
 
 void update_kinematics(Vec3* position, Vec3* velocity, const Vec3* acceleration, float dt) {
     // Using the Velocity Verlet integration scheme.

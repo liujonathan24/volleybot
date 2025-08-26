@@ -1,8 +1,11 @@
 #ifndef PRIMITIVE_H
 #define PRIMITIVE_H
 
-#include "../physics_core/vec3.h"
+#include "physics_core/vec3.h"
+#include "physics_core/mat4.h"
 #include "material.h"
+#include <memory>
+#include <vector>
 
 // Defines an Axis-Aligned Bounding Box
 struct AABB {
@@ -21,6 +24,7 @@ public:
     virtual void compute_aabb() = 0;
 
     Vec3 get_position() const { return position; }
+    Vec3 get_velocity() const { return velocity; }
     const Mat4& get_transform() const { return transform; }
     const AABB& get_aabb() const { return aabb; }
 
@@ -40,6 +44,7 @@ protected:
 class Sphere : public Primitive {
 public:
     Sphere(float radius, std::shared_ptr<Material> mat);
+    void compute_aabb() override;
     float get_radius() const { return radius; }
 private:
     float radius;
@@ -48,6 +53,7 @@ private:
 class Box : public Primitive {
 public:
     Box(const Vec3& extents, std::shared_ptr<Material> mat);
+    void compute_aabb() override;
     Vec3 get_extents() const { return extents; }
 private:
     Vec3 extents;

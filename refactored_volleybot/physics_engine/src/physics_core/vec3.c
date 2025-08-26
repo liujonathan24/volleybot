@@ -1,4 +1,4 @@
-#include "vec3.h"
+#include "physics_core/vec3.h"
 #include <math.h> 
 
 /* --- Vector Creation --- */

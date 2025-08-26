@@ -1,5 +1,5 @@
-#include "../../include/volleybot_physics/primitive.h"
-#include "../../include/physics_core/kinematics.h" // We will create this C header later
+#include "volleybot_physics/primitive.h"
+#include "physics_core/kinematics.h" // We will create this C header later
 
 // --- Primitive Base Class --- //
 
@@ -44,15 +44,24 @@ void Primitive::apply_force(const Vec3& force) {
     }
 }
 
+Box::Box(const Vec3& extents, std::shared_ptr<Material> mat) 
+    : Primitive(mat), extents(extents) {}
+
+void Box::compute_aabb() {
+    vec3_sub(&position, &extents, &aabb.min);
+    vec3_add(&position, &extents, &aabb.max);
+}
+
 // --- Sphere Derived Class --- //
 
 Sphere::Sphere(float radius, std::shared_ptr<Material> mat) 
     : Primitive(mat), radius(radius) {}
 
-// --- Box Derived Class --- //
-
-Box::Box(const Vec3& extents, std::shared_ptr<Material> mat) 
-    : Primitive(mat), extents(extents) {}
+void Sphere::compute_aabb() {
+    Vec3 r_vec = {radius, radius, radius};
+    vec3_sub(&position, &r_vec, &aabb.min);
+    vec3_add(&position, &r_vec, &aabb.max);
+}
 
 // --- TriangleMesh Derived Class --- //
 

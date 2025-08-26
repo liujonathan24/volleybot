@@ -1,7 +1,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "../physics_core/mat4.h"
+#include "../physics_core/vec3.h"
+#include "../physics_core/vec2.h"
 #include "primitive.h"
 
 class Camera {

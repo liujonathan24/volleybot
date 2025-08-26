@@ -1,5 +1,5 @@
-#include "../../include/volleybot_physics/camera.h"
-#include "../../include/volleybot_physics/primitive.h"
+#include "volleybot_physics/camera.h"
+#include "volleybot_physics/primitive.h"
 
 Camera::Camera(int width, int height) 
     : viewport_width(width), 

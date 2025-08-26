@@ -1,5 +1,5 @@
-#include "../../include/volleybot_physics/scene.h"
-#include "../../include/physics_core/collision.h"
+#include "volleybot_physics/scene.h"
+#include "physics_core/collision.h"
 #include <iostream> 
 #include <algorithm> // For std::sort
 
@@ -61,36 +61,63 @@ void Scene::solve_constraints(float dt) {
     const int solver_iterations = 8;
     for (int i = 0; i < solver_iterations; ++i) {
         for (auto& constraint : collision_constraints) {
-            // This is a simplified impulse solver and does not yet include friction or restitution.
-            // It solves for the non-penetration constraint.
             Primitive* a = constraint.a;
             Primitive* b = constraint.b;
 
-            // Simplified: Assume mass is 1 and restitution is 0 for now.
+            // Simplified impulse solver for non-penetration.
+            // Does not yet include friction or full restitution physics.
+
+            // Get velocities into local variables
+            Vec3 vel_a = a->get_velocity();
+            Vec3 vel_b = b->get_velocity();
+
             Vec3 relative_velocity;
-            vec3_sub(&b->get_velocity(), &a->get_velocity(), &relative_velocity);
+            vec3_sub(&vel_b, &vel_a, &relative_velocity);
 
             float velocity_along_normal = vec3_dot(&relative_velocity, &constraint.normal);
-            if (velocity_along_normal > 0) continue; // Objects are separating
+            if (velocity_along_normal > 0) continue; // Objects are already separating
 
+            // Simplified: Assume mass is 1 and restitution is 0 for now.
             float impulse_magnitude = -velocity_along_normal;
 
             Vec3 impulse;
             vec3_scale(&constraint.normal, impulse_magnitude, &impulse);
 
-            a->set_velocity(vec3_sub(&a->get_velocity(), &impulse, &a->get_velocity()));
-            b->set_velocity(vec3_add(&b->get_velocity(), &impulse, &b->get_velocity()));
+            // Apply the impulse by updating the local velocity variables
+            vec3_sub(&vel_a, &impulse, &vel_a);
+            vec3_add(&vel_b, &impulse, &vel_b);
+
+            // Update the actual primitives
+            a->set_velocity(vel_a);
+            b->set_velocity(vel_b);
         }
     }
 }
 
 void Scene::resolve_penetration() {
-    // TODO: User implementation.
-    // Loop through 'collision_constraints'. For each constraint:
-    // 1. Get the two primitives (a and b) and the penetration depth.
-    // 2. Calculate the amount to move each object (e.g., depth / 2).
-    // 3. Create a correction vector by scaling the collision normal by the move amount.
-    // 4. Apply the correction to each object's position (one positive, one negative).
+    const float correction_percent = 0.4f; // Correct a percentage of the error each frame to avoid jitter
+    const float slop = 0.01f; // Allow for a small amount of overlap
+
+    for (const auto& constraint : collision_constraints) {
+        float correction_magnitude = fmaxf(0, constraint.depth - slop);
+        if (correction_magnitude == 0) continue;
+
+        // For now, assume equal mass and move each object by half the amount
+        Vec3 correction_vector;
+        vec3_scale(&constraint.normal, correction_magnitude * correction_percent * 0.5f, &correction_vector);
+
+        Primitive* a = constraint.a;
+        Primitive* b = constraint.b;
+
+        Vec3 pos_a = a->get_position();
+        Vec3 pos_b = b->get_position();
+
+        vec3_sub(&pos_a, &correction_vector, &pos_a);
+        vec3_add(&pos_b, &correction_vector, &pos_b);
+
+        a->set_position(pos_a);
+        b->set_position(pos_b);
+    }
 }
 
 

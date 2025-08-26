@@ -1,4 +1,4 @@
-#include "../../include/volleybot_physics/light.h"
+#include "volleybot_physics/light.h"
 
 Light::Light(Vec3 position, Vec3 color, float intensity)
     : position(position), color(color), intensity(intensity) {

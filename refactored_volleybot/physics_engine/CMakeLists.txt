@@ -27,6 +27,14 @@ set(SOURCE_FILES
 # Add a library target. We build a SHARED library so it can be loaded by Python.
 add_library(volleybot_physics SHARED ${SOURCE_FILES})
 
+# On macOS, set the install name so the dylib can be found relative to the
+# python extension that loads it. This makes the wheel relocatable.
+if(APPLE)
+  set_target_properties(volleybot_physics PROPERTIES
+    INSTALL_NAME_DIR "@loader_path"
+  )
+endif()
+
 # Specify the include directories for the compiler
 target_include_directories(volleybot_physics PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
