@@ -1,0 +1,114 @@
+### **Plan for the VolleyBot Physics Simulator**
+
+The overall architecture will be a three-layer system:
+1.  **C Core (`physics_core`):** A pure C90 library for high-performance mathematics and physics calculations.
+2.  **C++ Layer (`volleybot_physics`):** An object-oriented layer that defines scenes, objects (primitives, robots), and materials. It will use the C core for all heavy computations.
+3.  **Python API (`volleybot_env`):** A Python wrapper around the C++ layer, providing a simple, MuJoCo-like interface perfect for reinforcement learning.
+
+---
+
+### **1. Proposed Directory Structure**
+
+I'll start by setting up a new directory `physics_engine` to house the C/C++ source code, keeping it separate from your existing Python agent and environment code.
+
+```
+/volleybot/
+├───physics_engine/
+│   ├───include/
+│   │   ├───physics_core/      # C headers (.h) for the physics engine
+│   │   │   ├───vec3.h
+│   │   │   ├───mat4.h
+│   │   │   ├───kinematics.h
+│   │   │   ├───collision.h
+│   │   │   └───lighting.h
+│   │   └───volleybot_physics/ # C++ headers (.h) for objects and scene management
+│   │       ├───common.h
+│   │       ├───material.h
+│   │       ├───primitive.h
+│   │       ├───camera.h
+│   │       ├───light.h
+│   │       ├───motor.h
+│   │       ├───composite_object.h
+│   │       ├───scene.h
+│   │       └───obj_loader.h
+│   ├───src/
+│   │   ├───physics_core/      # C implementation (.c)
+│   │   └───volleybot_physics/ # C++ implementation (.cpp)
+│   ├───bindings/
+│   │   └───python_bindings.cpp # Pybind11 wrapper code
+│   └───CMakeLists.txt          # Build script for the C/C++ parts
+├───setup.py                    # To build and install the python package
+├───examples/
+│   └───rl_example.py
+└───... (rest of existing project files)
+```
+
+This structure cleanly isolates the C math, C++ objects, and Python bindings.
+
+### **2. Implementation Plan**
+
+#### **Phase 1: The C Physics Core (`physics_core`)**
+*   **Math Primitives:** Implement `vec3` and `mat4` operations (dot products, cross products, matrix multiplication) in pure C90. These functions will operate on simple `struct` pointers for maximum performance and compatibility.
+*   **Physics Kernels:** Implement the core functions you specified (`update_kinematics`, `apply_friction`, `resolve_collision`) in C. These will operate on a generic `PhysicsObject` struct, which will be a simple data container managed by the C++ layer above it.
+
+#### **Phase 2: The C++ Object Layer (`volleybot_physics`)**
+*   **Scene Management:** A `Scene` class will be the central hub, managing lists of all objects, lights, and cameras.
+*   **Object Creation:**
+    *   A `Material` struct will define physical properties (mass, friction, restitution) and visual properties (color, shininess).
+    *   A base `Primitive` class will be created, with derived classes like `Sphere`, `Box`, and `Cylinder`.
+    *   A `CompositeObject` class will represent the robot. It will contain a list of primitives, their relative positions, and `Motor` objects that apply forces between them.
+*   **OBJ Loading:** An `ObjLoader` utility will be created to parse `.obj` files and convert them into a `CompositeObject`, allowing you to import custom meshes for the court, net, or robot parts.
+
+#### **Phase 3: The Python API (`bindings` & `setup.py`)**
+*   **Bindings:** We will use `pybind11` to create the Python interface. It's a modern, header-only library that makes exposing C++ classes and functions to Python straightforward. The binding code will live in `python_bindings.cpp`.
+*   **Packaging:** A `setup.py` script will orchestrate the build process. It will use `CMake` to compile the C and C++ code into a shared library, which is then packaged into a standard Python wheel. This makes installation as simple as `pip install .`.
+
+### **3. Reinforcement Learning API Design**
+
+The goal is to create an API that feels intuitive for RL. The Python wrapper will expose the C++ `Scene` object, allowing for a workflow like this:
+
+```python
+# examples/rl_example.py
+
+import volleybot_env as vbe
+import numpy as np
+
+# 1. Initialize the environment
+scene = vbe.Scene()
+
+# 2. Populate the scene
+scene.load_obj("court.obj", material=vbe.Material.WOOD)
+robot_id = scene.add_robot("volleybot_model.xml")
+ball_id = scene.add_sphere(radius=0.1, material=vbe.Material.RUBBER)
+scene.add_light(position=(10, 10, 10))
+scene.set_camera(position=(0, 5, -10), target=(0, 0, 0))
+
+# 3. Main RL Loop
+for episode in range(1000):
+    observation = scene.reset()
+    done = False
+    while not done:
+        # Agent selects an action
+        action = my_agent.get_action(observation)
+
+        # Apply action and step the physics
+        scene.set_motor_torques(robot_id, action)
+        scene.step(dt=0.01)
+
+        # Get new state for the agent
+        camera_feed = scene.get_camera_image(width=84, height=84)
+        robot_state = scene.get_object_kinematics(robot_id)
+        observation = {"camera": camera_feed, "state": robot_state}
+
+        # Calculate reward and check for termination
+        reward = calculate_reward(scene)
+        done = check_if_done(scene)
+```
+
+### **4. Optimizations Based on Your Constraints**
+
+Your specific use case allows for significant simplifications and optimizations:
+
+*   **Collision Detection:** With a maximum of ~160 simple primitives, a complex spatial partitioning structure (like an octree) is not necessary initially. A brute-force `O(n^2)` check between all object bounding spheres will be extremely fast and can be heavily optimized with SIMD.
+*   **Rendering:** Since you only render from one camera at a time, we can avoid complex rendering pipelines like deferred shading. A simple forward renderer that iterates through visible objects will be sufficient and fast.
+*   **Parallelism:** The physics updates for each of the 8 robots are independent. The main `scene.step()` function can easily parallelize this by processing each `CompositeObject` on a separate thread.
