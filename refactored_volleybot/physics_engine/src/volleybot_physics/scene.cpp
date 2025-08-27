@@ -13,12 +13,12 @@ Scene::Scene() {
 Scene::~Scene() {}
 
 void Scene::step(float dt) {
-    // 1. Update physics for all primitives
+    // 1. Update physics for all primitives 
     for (auto& p : primitives) {
         p->update_physics(dt, gravity);
     }
 
-    // 2. Broadphase collision detection
+    // 2. Broadphase collision detection 
     broad_phase();
 
     // 3. Solve collision constraints (velocity correction)
