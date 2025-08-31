@@ -1,5 +1,5 @@
 #include "volleybot_physics/primitive.h"
-#include "physics_core/kinematics.h" // We will create this C header later
+#include "physics_core/kinematics.h" 
 
 // --- Primitive Base Class --- //
 
@@ -45,7 +45,9 @@ void Primitive::apply_force(const Vec3& force) {
 }
 
 Box::Box(const Vec3& extents, std::shared_ptr<Material> mat) 
-    : Primitive(mat), extents(extents) {}
+    : Primitive(mat), extents(extents) {
+    type = PrimitiveType::BOX;
+}
 
 void Box::compute_aabb() {
     vec3_sub(&position, &extents, &aabb.min);
@@ -55,7 +57,9 @@ void Box::compute_aabb() {
 // --- Sphere Derived Class --- //
 
 Sphere::Sphere(float radius, std::shared_ptr<Material> mat) 
-    : Primitive(mat), radius(radius) {}
+    : Primitive(mat), radius(radius) {
+    type = PrimitiveType::SPHERE;
+}
 
 void Sphere::compute_aabb() {
     Vec3 r_vec = {radius, radius, radius};
@@ -66,9 +70,13 @@ void Sphere::compute_aabb() {
 // --- TriangleMesh Derived Class --- //
 
 TriangleMesh::TriangleMesh(std::shared_ptr<Material> mat)
-    : Primitive(mat) {}
+    : Primitive(mat) {
+    type = PrimitiveType::MESH;
+}
 
 // --- Cylinder Derived Class --- //
 
 Cylinder::Cylinder(float height, float radius, int sides, std::shared_ptr<Material> mat)
-    : Primitive(mat), height(height), radius(radius), sides(sides) {}
+    : Primitive(mat), height(height), radius(radius), sides(sides) {
+    type = PrimitiveType::CYLINDER;
+}

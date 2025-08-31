@@ -13,6 +13,14 @@ struct AABB {
     Vec3 max;
 };
 
+enum class PrimitiveType {
+    SPHERE,
+    BOX,
+    CYLINDER,
+    MESH,
+    COMPOSITE // For composite objects
+};
+
 class Primitive {
 public:
     Primitive(std::shared_ptr<Material> mat);
@@ -22,6 +30,8 @@ public:
 
     // Computes the world-space AABB for the primitive
     virtual void compute_aabb() = 0;
+
+    PrimitiveType get_type() const { return type; }
 
     Vec3 get_position() const { return position; }
     Vec3 get_velocity() const { return velocity; }
@@ -39,6 +49,7 @@ protected:
     Mat4 transform;
     std::shared_ptr<Material> material;
     AABB aabb;
+    PrimitiveType type;
 };
 
 class Sphere : public Primitive {

@@ -1,5 +1,6 @@
 #include "volleybot_physics/scene.h"
 #include "physics_core/collision.h"
+#include "volleybot_physics/composite_object.h"
 #include <iostream> 
 #include <algorithm> // For std::sort
 
@@ -13,9 +14,13 @@ Scene::Scene() {
 Scene::~Scene() {}
 
 void Scene::step(float dt) {
-    // 1. Update physics for all primitives 
-    for (auto& p : primitives) {
-        p->update_physics(dt, gravity); 
+    // 1. Update physics for all bodies
+    for (auto& body : physics_bodies) {
+        body->update_physics(dt, gravity);
+        // For composites, we must also update the world positions of their parts
+        if (body->get_type() == PrimitiveType::COMPOSITE) {
+            static_cast<CompositeObject*>(body.get())->update_child_transforms();
+        }
     }
 
     // 2. Broadphase collision detection 
@@ -33,33 +38,76 @@ void Scene::broad_phase() {
     // A proper Sort and Sweep would be implemented here later for performance.
     collision_constraints.clear();
 
-    for (size_t i = 0; i < primitives.size(); ++i) {
-        for (size_t j = i + 1; j < primitives.size(); ++j) {
-            narrow_phase(primitives[i].get(), primitives[j].get());
+    for (size_t i = 0; i < physics_bodies.size(); ++i) {
+        for (size_t j = i + 1; j < physics_bodies.size(); ++j) {
+            narrow_phase(physics_bodies[i].get(), physics_bodies[j].get());
         }
     }
 }
 
 void Scene::narrow_phase(Primitive* a, Primitive* b) {
-    Sphere* sphere_a = dynamic_cast<Sphere*>(a);
-    Sphere* sphere_b = dynamic_cast<Sphere*>(b);
+    // Recursively check parts of composite objects
+    bool a_is_composite = a->get_type() == PrimitiveType::COMPOSITE;
+    bool b_is_composite = b->get_type() == PrimitiveType::COMPOSITE;
 
-    if (sphere_a && sphere_b) {
+    if (a_is_composite) {
+        for (const auto& part : static_cast<CompositeObject*>(a)->get_parts()) {
+            narrow_phase(part.primitive.get(), b); // Recurse
+        }
+        return;
+    }
+    if (b_is_composite) {
+        for (const auto& part : static_cast<CompositeObject*>(b)->get_parts()) {
+            narrow_phase(a, part.primitive.get()); // Recurse
+        }
+        return;
+    }
+
+    // --- Base Case: Two non-composite primitives ---
+    auto typeA = a->get_type();
+    auto typeB = b->get_type();
+
+    // To avoid writing checks for both (A vs B) and (B vs A), we ensure
+    // that typeA is always the smaller enum value.
+    if (typeA > typeB) {
+        std::swap(a, b);
+        std::swap(typeA, typeB);
+    }
+
+    if (typeA == PrimitiveType::SPHERE && typeB == PrimitiveType::SPHERE) {
+        auto* sphere_a = static_cast<Sphere*>(a);
+        auto* sphere_b = static_cast<Sphere*>(b);
         CollisionInfo info = test_sphere_vs_sphere(
             sphere_a->get_position(), sphere_a->get_radius(),
             sphere_b->get_position(), sphere_b->get_radius()
         );
-
         if (info.has_collided) {
             collision_constraints.push_back({a, b, info.normal, info.depth, 0.0f});
         }
-    }
-    // TODO: User can add Sphere vs Box check here
+    } else if (typeA == PrimitiveType::SPHERE && typeB == PrimitiveType::BOX) {
+        auto* sphere = static_cast<Sphere*>(a);
+        auto* box = static_cast<Box*>(b);
+        CollisionInfo info = test_sphere_vs_box(
+            sphere->get_position(), sphere->get_radius(),
+            box->get_position(), box->get_extents()
+        );
+        if (info.has_collided) {
+            collision_constraints.push_back({a, b, info.normal, info.depth, 0.0f});
+        }
+    } 
+    // else if (typeA == PrimitiveType::BOX && typeB == PrimitiveType::BOX) { ... }
+    // etc. for other collision pairs
 }
 
 void Scene::solve_constraints(float dt) {
     const int solver_iterations = 8;
     for (int i = 0; i < solver_iterations; ++i) {
+        // First, solve joint constraints
+        for (auto& joint : joints) {
+            joint->apply_constraint(dt);
+        }
+
+        // Then, solve collision constraints
         for (auto& constraint : collision_constraints) {
             Primitive* a = constraint.a;
             Primitive* b = constraint.b;
@@ -126,7 +174,15 @@ void Scene::render() {
 }
 
 void Scene::add_primitive(std::unique_ptr<Primitive> primitive) {
-    primitives.push_back(std::move(primitive));
+    physics_bodies.push_back(std::move(primitive));
+}
+
+void Scene::add_composite_object(std::unique_ptr<CompositeObject> object) {
+    physics_bodies.push_back(std::move(object));
+}
+
+void Scene::add_joint(std::unique_ptr<Joint> joint) {
+    joints.push_back(std::move(joint));
 }
 
 void Scene::add_light(std::unique_ptr<Light> light) {

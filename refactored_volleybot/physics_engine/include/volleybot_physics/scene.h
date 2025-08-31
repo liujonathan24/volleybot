@@ -2,9 +2,13 @@
 #define SCENE_H
 
 #include "primitive.h"
+#include "composite_object.h"
+#include "joint.h"
 #include "camera.h"
 #include "light.h"
 #include <string>
+#include <vector>
+#include <memory>
 
 struct CollisionConstraint {
     Primitive* a;
@@ -24,6 +28,8 @@ public:
     void render();
 
     void add_primitive(std::unique_ptr<Primitive> primitive);
+    void add_composite_object(std::unique_ptr<CompositeObject> object);
+    void add_joint(std::unique_ptr<Joint> joint);
     void add_light(std::unique_ptr<Light> light);
     void set_camera(std::unique_ptr<Camera> camera);
 
@@ -44,7 +50,8 @@ private:
      */
     void resolve_penetration();
 
-    std::vector<std::unique_ptr<Primitive>> primitives;
+    std::vector<std::unique_ptr<Primitive>> physics_bodies;
+    std::vector<std::unique_ptr<Joint>> joints;
     std::vector<std::unique_ptr<Light>> lights;
     std::unique_ptr<Camera> active_camera;
     Vec3 gravity;
