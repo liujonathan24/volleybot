@@ -28,6 +28,9 @@ public:
     const std::vector<BodyPart>& get_parts() const { return parts; }
 
 private:
+    // Recalculates the total mass, center of mass, and inertia tensor from all parts
+    void compute_mass_and_inertia();
+
     std::vector<BodyPart> parts;
 };
 

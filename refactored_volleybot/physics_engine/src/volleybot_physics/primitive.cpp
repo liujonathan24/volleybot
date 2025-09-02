@@ -7,7 +7,12 @@ Primitive::Primitive(std::shared_ptr<Material> mat) : material(mat) {
     vec3_set(&position, 0, 0, 0);
     vec3_set(&velocity, 0, 0, 0);
     vec3_set(&acceleration, 0, 0, 0);
+
+    vec3_set(&angular_velocity, 0, 0, 0);
+    vec3_set(&center_of_mass, 0, 0, 0); // Default for single primitives
     mat4_identity(&transform);
+    mat4_identity(&inertia_tensor);
+    mat4_identity(&inverse_inertia_tensor);
 }
 
 void Primitive::update_physics(float dt, Vec3 gravity) {
@@ -42,6 +47,13 @@ void Primitive::apply_force(const Vec3& force) {
         vec3_scale(&force, 1.0f / material->mass, &scaled_force);
         vec3_add(&acceleration, &scaled_force, &acceleration);
     }
+}
+
+void Primitive::apply_impulse(const Vec3& impulse, const Vec3& contact_point) {
+    // TODO: Update linear and angular velocity from an impulse
+    // 1. Update linear velocity: delta_v = impulse / mass
+    // 2. Update angular velocity: delta_omega = inverse_inertia_tensor * (r x impulse)
+    //    where r is the vector from the center of mass to the contact_point
 }
 
 Box::Box(const Vec3& extents, std::shared_ptr<Material> mat) 

@@ -32,6 +32,7 @@ public:
     virtual void compute_aabb() = 0;
 
     PrimitiveType get_type() const { return type; }
+    std::shared_ptr<Material> get_material() const { return material; }
 
     Vec3 get_position() const { return position; }
     Vec3 get_velocity() const { return velocity; }
@@ -42,10 +43,22 @@ public:
     void set_velocity(const Vec3& vel);
     void apply_force(const Vec3& force);
 
+    // Applies an impulse at a specific point, affecting both linear and angular velocity
+    void apply_impulse(const Vec3& impulse, const Vec3& contact_point);
+
 protected:
+    // Linear Motion
     Vec3 position;
     Vec3 velocity;
     Vec3 acceleration;
+
+    // Angular Motion
+    Vec3 angular_velocity;
+    Vec3 center_of_mass; // In local coordinates
+    Mat4 inertia_tensor; // In local coordinates
+    Mat4 inverse_inertia_tensor;
+
+    // General Properties
     Mat4 transform;
     std::shared_ptr<Material> material;
     AABB aabb;
