@@ -6,10 +6,12 @@ Currently undergoing refactoring to use a custom, lightweight C/C++ physics simu
 Todo elements:
 - [x] Kinematics (verlet integration)
 - [x] C++ integration for creating objects
-- [x] lighting (verlet integration)
+- [x] lighting
 - [x] basic material properties
 - [x] camera angle mathematics
 - [] Collision detection & processing
+- [] Renderer
+- [] Switch from storing 3d vector position and 3x3 matrix for rotation to a 7-dim state (3d for location, 4d for rotation quaternion)
 - [] Python bindings
 
 
