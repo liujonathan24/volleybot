@@ -2,6 +2,18 @@
 #include <string.h> // For memset
 #include <math.h>
 
+void mat4_zero(Mat4* result) {
+    memset(result->m, 0, sizeof(result->m));
+}
+
+void mat4_add(const Mat4* a, const Mat4* b, Mat4* result) {
+    for (int c = 0; c < 4; ++c) {
+        for (int r = 0; r < 4; ++r) {
+            result->m[c][r] = a->m[c][r] + b->m[c][r];
+        }
+    }
+}
+
 void mat4_identity(Mat4* result) {
     memset(result->m, 0, sizeof(result->m));
     result->m[0][0] = 1.0f;

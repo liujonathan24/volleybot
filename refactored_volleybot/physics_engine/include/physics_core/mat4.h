@@ -14,6 +14,8 @@ typedef struct {
 
 /* --- Core Matrix Operations --- */
 void mat4_identity(Mat4* result);
+void mat4_zero(Mat4* result);
+void mat4_add(const Mat4* a, const Mat4* b, Mat4* result);
 void mat4_multiply(const Mat4* a, const Mat4* b, Mat4* result);
 Vec3 mat4_transform_point(const Mat4* m, Vec3 v);
 Vec3 mat4_transform_direction(const Mat4* m, Vec3 v);

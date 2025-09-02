@@ -19,47 +19,75 @@ void CompositeObject::add_part(std::unique_ptr<Primitive> part, Vec3 local_posit
 }
 
 void CompositeObject::compute_mass_and_inertia() {
-    // TODO: This is for you to implement.
-    // This function should calculate the following properties for the composite body:
-    // - material->mass (total mass)
-    // - center_of_mass (in the composite's local coordinates)
-    // - inertia_tensor (relative to the new center of mass)
+    // Calculate Total Mass and Combined Center of Mass
 
-    // 1. Calculate Total Mass & Weighted Position Sum:
-    //    - Initialize total_mass = 0 and a weighted_position_sum vector = {0,0,0}.
-    //    - Loop through each `part` in the `parts` vector.
-    //    - Add the part's material->mass to the total_mass.
-    //    - Get the part's local position from its `local_transform`.
-    //    - Add (part_mass * part_local_position) to weighted_position_sum.
-    float total_mass = 0;
-    Vec3 weighted_position_sum = {0,0,0};
-    for (auto& part : parts) {
-        total_mass += part.material->mass
+    float total_mass = 0.0f;
+    Vec3 com_accumulator = {0,0,0}; // A temporary vector to sum weighted positions
+
+    // Combine the first two loops into one for efficiency.
+    for (const auto& part : parts) {
+        float part_mass = part.primitive->get_material()->mass;
+        total_mass += part_mass;
+
+        // Get the part's local position
+        Vec3 part_pos = mat4_transform_point(&part.local_transform, {0,0,0});
+        
+        // Scale the position by the mass before adding it to the sum.
+        Vec3 scaled_pos;
+        vec3_scale(&part_pos, part_mass, &scaled_pos);
+        vec3_add(&com_accumulator, &scaled_pos, &com_accumulator);
     }
-    for (auto& part : parts) {
-        Vec3 temp_pos;
-        float weight = part.material->mass/total_mass;
-        vec3_scale(part.local_transform, weight, temp_pos);
-        vec3_add(temp_pos, weighted_position_sum, weighted_position_sum)
+
+    // Update the final mass and calculate the center of mass for the whole object
+    this->material->mass = total_mass;
+    if (total_mass > 0.0f) {
+        vec3_scale(&com_accumulator, 1.0f / total_mass, &this->center_of_mass);
     }
-    // 2. Calculate Combined Center of Mass:
-    //    - If total_mass > 0, the new center_of_mass is weighted_position_sum / total_mass.
-    //    - This is the center of mass in the composite object's local space.
 
-    // 3. Calculate Combined Inertia Tensor:
-    //    - Initialize a total_inertia_tensor matrix to all zeros.
-    //    - Loop through each `part` again.
-    //    - For each part, you need its inertia tensor *relative to the composite's center of mass*.
-    //    - This requires the Parallel Axis Theorem: I_total = I_part + mass * (d^2 * Identity - d*d^T)
-    //      where `d` is the vector from the composite's center of mass to the part's center of mass.
-    //    - Add this calculated tensor to the total_inertia_tensor.
-    //    - (This is a complex step, requiring matrix and vector operations).
+    // Calculate Combined Inertia Tensor
+    Mat4 total_inertia_tensor;
+    mat4_zero(&total_inertia_tensor); // Use helper to initialize the matrix to zeros
 
-    // 4. Update Properties:
-    //    - Set this->material->mass = total_mass.
-    //    - Set this->center_of_mass = the new calculated center of mass.
-    //    - Set this->inertia_tensor = total_inertia_tensor.
-    //    - Compute and store the inverse_inertia_tensor.
+    for (const auto& part : parts) {
+        // Get the inertia tensor of the part relative to its own center of mass
+        Mat4 part_inertia = part.primitive->get_inertia_tensor();
+        float part_mass = part.primitive->get_material()->mass;
+        Vec3 part_pos = mat4_transform_point(&part.local_transform, {0,0,0});
+
+        // Calculate the displacement vector 'd' from the composite CoM to the part's CoM
+        Vec3 d;
+        vec3_sub(&part_pos, &this->center_of_mass, &d);
+
+        // This is the Parallel Axis Theorem: I_new = I_part + M * (d²E - d⊗d)
+        Mat4 parallel_axis_term;
+        float d_sq = vec3_dot(&d, &d);
+        parallel_axis_term.m[0][0] = part_mass * (d_sq - d.x * d.x);
+        parallel_axis_term.m[0][1] = part_mass * (0.0f - d.x * d.y);
+        parallel_axis_term.m[0][2] = part_mass * (0.0f - d.x * d.z);
+
+        parallel_axis_term.m[1][0] = part_mass * (0.0f - d.y * d.x);
+        parallel_axis_term.m[1][1] = part_mass * (d_sq - d.y * d.y);
+        parallel_axis_term.m[1][2] = part_mass * (0.0f - d.y * d.z);
+
+        parallel_axis_term.m[2][0] = part_mass * (0.0f - d.z * d.x);
+        parallel_axis_term.m[2][1] = part_mass * (0.0f - d.z * d.y);
+        parallel_axis_term.m[2][2] = part_mass * (d_sq - d.z * d.z);
+        
+        // Ensure the 4th row/col are 0s and 1 for a proper transform matrix
+        parallel_axis_term.m[3][3] = 1.0f; 
+        parallel_axis_term.m[0][3] = parallel_axis_term.m[1][3] = parallel_axis_term.m[2][3] = 0.0f;
+        parallel_axis_term.m[3][0] = parallel_axis_term.m[3][1] = parallel_axis_term.m[3][2] = 0.0f;
+
+        // add the part's own inertia and the parallel axis term to the total
+        Mat4 temp_sum;
+        mat4_add(&total_inertia_tensor, &part_inertia, &temp_sum);
+        mat4_add(&temp_sum, &parallel_axis_term, &total_inertia_tensor);
+    }
+
+    // Update Final Properties
+    this->inertia_tensor = total_inertia_tensor;
+    // Calculate the inverse.
+    mat4_affine_inverse(&this->inertia_tensor, &this->inverse_inertia_tensor);
 }
 
 

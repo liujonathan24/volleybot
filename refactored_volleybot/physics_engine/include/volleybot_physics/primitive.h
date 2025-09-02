@@ -38,6 +38,8 @@ public:
     Vec3 get_velocity() const { return velocity; }
     const Mat4& get_transform() const { return transform; }
     const AABB& get_aabb() const { return aabb; }
+    const Mat4& get_inertia_tensor() const { return inertia_tensor; }
+    const Mat4& get_inverse_inertia_tensor() const { return inverse_inertia_tensor; }
 
     void set_position(const Vec3& pos);
     void set_velocity(const Vec3& vel);
