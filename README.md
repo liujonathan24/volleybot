@@ -42,7 +42,7 @@ conda activate volleybot
 
 # Testing Instructions:
 From within the volleybot folder, run:
-``` python -m agents.test```
+``` python -m agents.camera_livefeed```
 
 
 
