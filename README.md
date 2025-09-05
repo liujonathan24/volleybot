@@ -36,7 +36,7 @@ Volleyball environment structure:
 
 # Installation Instructions:
 ```
-conda env create -f environment.yml 
+conda create --name volleybot --file requirements.txt
 conda activate volleybot
 ```
 
