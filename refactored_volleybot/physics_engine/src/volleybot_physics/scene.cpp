@@ -102,9 +102,14 @@ void Scene::narrow_phase(Primitive* a, Primitive* b) {
 void Scene::solve_constraints(float dt) {
     const int solver_iterations = 8;
     for (int i = 0; i < solver_iterations; ++i) {
-        // First, solve joint constraints
-        for (auto& joint : joints) {
-            joint->apply_constraint(dt);
+        // Get joints from composite objects and apply their constraints
+        for (auto& body : physics_bodies) {
+            if (body->get_type() == PrimitiveType::COMPOSITE) {
+                auto* composite = static_cast<CompositeObject*>(body.get());
+                for (auto& joint : composite->get_joints()) {
+                    joint->apply_constraint(dt);
+                }
+            }
         }
 
         // Then, solve collision constraints
@@ -112,32 +117,181 @@ void Scene::solve_constraints(float dt) {
             Primitive* a = constraint.a;
             Primitive* b = constraint.b;
 
-            // Simplified impulse solver for non-penetration.
-            // Does not yet include friction or full restitution physics.
+            // --- REALISTIC IMPULSE SOLVER ---
 
-            // Get velocities into local variables
-            Vec3 vel_a = a->get_velocity();
-            Vec3 vel_b = b->get_velocity();
+            Vec3 pos_a = a->get_position();
+            Vec3 pos_b = b->get_position();
+            Vec3 contact_point = {0,0,0}; // Simplified: average of positions
+            vec3_add(&pos_a, &pos_b, &contact_point);
+            vec3_scale(&contact_point, 0.5f, &contact_point);
 
+            // Get vectors from CoM to contact point
+            Vec3 r_a, r_b;
+            Vec3 world_com_a = mat4_transform_point(&a->get_transform(), a->get_center_of_mass());
+            Vec3 world_com_b = mat4_transform_point(&b->get_transform(), b->get_center_of_mass());
+            vec3_sub(&contact_point, &world_com_a, &r_a);
+            vec3_sub(&contact_point, &world_com_b, &r_b);
+
+            // Get velocity at contact point
+            Vec3 v_a_angular, v_b_angular;
+            Vec3 ang_vel_a = a->get_angular_velocity();
+            Vec3 ang_vel_b = b->get_angular_velocity();
+            vec3_cross(&ang_vel_a, &r_a, &v_a_angular);
+            vec3_cross(&ang_vel_b, &r_b, &v_b_angular);
+            Vec3 v_a, v_b;
+            Vec3 lin_vel_a = a->get_velocity();
+            Vec3 lin_vel_b = b->get_velocity();
+            vec3_add(&lin_vel_a, &v_a_angular, &v_a);
+            vec3_add(&lin_vel_b, &v_b_angular, &v_b);
+
+            // Calculate relative velocity
             Vec3 relative_velocity;
-            vec3_sub(&vel_b, &vel_a, &relative_velocity);
-
+            vec3_sub(&v_b, &v_a, &relative_velocity);
             float velocity_along_normal = vec3_dot(&relative_velocity, &constraint.normal);
-            if (velocity_along_normal > 0) continue; // Objects are already separating
 
-            // Simplified: Assume mass is 1 and restitution is 0 for now.
-            float impulse_magnitude = -velocity_along_normal;
+            // Do nothing if objects are already separating
+            if (velocity_along_normal > 0) continue;
 
+            // Calculate restitution (bounciness)
+            float e = fminf(a->get_material()->restitution, b->get_material()->restitution);
+
+            // Calculate effective mass (K)
+            float inv_mass_a = a->get_material()->mass > 0 ? 1.0f / a->get_material()->mass : 0.0f;
+            float inv_mass_b = b->get_material()->mass > 0 ? 1.0f / b->get_material()->mass : 0.0f;
+            
+            Vec3 r_a_cross_n, r_b_cross_n;
+            vec3_cross(&r_a, &constraint.normal, &r_a_cross_n);
+            vec3_cross(&r_b, &constraint.normal, &r_b_cross_n);
+
+            Vec3 I_inv_r_a_cross_n = mat4_transform_direction(&a->get_inverse_inertia_tensor(), r_a_cross_n);
+            Vec3 I_inv_r_b_cross_n = mat4_transform_direction(&b->get_inverse_inertia_tensor(), r_b_cross_n);
+
+            float angular_component = vec3_dot(&I_inv_r_a_cross_n, &r_a_cross_n) + vec3_dot(&I_inv_r_b_cross_n, &r_b_cross_n);
+            float effective_mass = inv_mass_a + inv_mass_b + angular_component;
+
+            // Prevent division by zero or very small numbers
+            if (effective_mass < 1e-6f) continue;
+
+            // Calculate impulse magnitude (j)
+            float j = -(1.0f + e) * velocity_along_normal / effective_mass;
+
+            // Apply impulse
             Vec3 impulse;
-            vec3_scale(&constraint.normal, impulse_magnitude, &impulse);
+            vec3_scale(&constraint.normal, j, &impulse);
 
-            // Apply the impulse by updating the local velocity variables
-            vec3_sub(&vel_a, &impulse, &vel_a);
-            vec3_add(&vel_b, &impulse, &vel_b);
+            a->apply_impulse(impulse, contact_point);
+            
+            Vec3 negative_impulse;
+            vec3_negate(&impulse, &negative_impulse);
+            b->apply_impulse(negative_impulse, contact_point);
 
-            // Update the actual primitives
-            a->set_velocity(vel_a);
-            b->set_velocity(vel_b);
+            // --- FRICTION IMPULSE ---
+            // Recalculate relative velocity after normal impulse is applied
+            Vec3 v_a_angular_friction, v_b_angular_friction;
+            vec3_cross(&a->get_angular_velocity(), &r_a, &v_a_angular_friction);
+            vec3_cross(&b->get_angular_velocity(), &r_b, &v_b_angular_friction);
+            Vec3 v_a_friction, v_b_friction;
+            vec3_add(&a->get_velocity(), &v_a_angular_friction, &v_a_friction);
+            vec3_add(&b->get_velocity(), &v_b_angular_friction, &v_b_friction);
+
+            Vec3 relative_velocity_friction;
+            vec3_sub(&v_b_friction, &v_a_friction, &relative_velocity_friction);
+
+            Vec3 tangent_direction;
+            vec3_scale(&constraint.normal, vec3_dot(&relative_velocity_friction, &constraint.normal), &tangent_direction);
+            vec3_sub(&relative_velocity_friction, &tangent_direction, &tangent_direction);
+            
+            float tangent_speed = vec3_length(&tangent_direction);
+            if (tangent_speed < 1e-6f) continue;
+
+            vec3_scale(&tangent_direction, 1.0f / tangent_speed, &tangent_direction); // Normalize
+
+            // Calculate tangential effective mass
+            Vec3 r_a_cross_t, r_b_cross_t;
+            vec3_cross(&r_a, &tangent_direction, &r_a_cross_t);
+            vec3_cross(&r_b, &tangent_direction, &r_b_cross_t);
+
+            Vec3 I_inv_r_a_cross_t = mat4_transform_direction(&a->get_inverse_inertia_tensor(), r_a_cross_t);
+            Vec3 I_inv_r_b_cross_t = mat4_transform_direction(&b->get_inverse_inertia_tensor(), r_b_cross_t);
+
+            float angular_component_t = vec3_dot(&I_inv_r_a_cross_t, &r_a_cross_t) + vec3_dot(&I_inv_r_b_cross_t, &r_b_cross_t);
+            float effective_mass_t = inv_mass_a + inv_mass_b + angular_component_t;
+
+            if (effective_mass_t < 1e-6f) continue;
+
+            // Calculate tangential impulse magnitude
+            float jt = -vec3_dot(&relative_velocity_friction, &tangent_direction) / effective_mass_t;
+
+            // Apply Coulomb friction model (clamp tangential impulse by normal impulse)
+            float combined_friction = fminf(a->get_material()->friction, b->get_material()->friction);
+            float max_friction_impulse = combined_friction * j; // j is the normal impulse magnitude
+
+            jt = fmaxf(-max_friction_impulse, fminf(jt, max_friction_impulse));
+
+            // Apply tangential impulse
+            Vec3 friction_impulse;
+            vec3_scale(&tangent_direction, jt, &friction_impulse);
+
+            a->apply_impulse(friction_impulse, contact_point);
+            Vec3 negative_friction_impulse;
+            vec3_negate(&friction_impulse, &negative_friction_impulse);
+            b->apply_impulse(negative_friction_impulse, contact_point);
+
+            // --- FRICTION IMPULSE ---
+            // Recalculate relative velocity after normal impulse is applied
+            Vec3 v_a_friction, v_b_friction;
+            Vec3 temp_v_a_f = a->get_velocity();
+            Vec3 temp_v_b_f = b->get_velocity();
+            Vec3 temp_av_a_f = a->get_angular_velocity();
+            Vec3 temp_av_b_f = b->get_angular_velocity();
+
+            vec3_cross(&temp_av_a_f, &r_a, &v_a_angular);
+            vec3_cross(&temp_av_b_f, &r_b, &v_b_angular);
+            vec3_add(&temp_v_a_f, &v_a_angular, &v_a_friction);
+            vec3_add(&temp_v_b_f, &v_b_angular, &v_b_friction);
+
+            Vec3 relative_velocity_friction;
+            vec3_sub(&v_b_friction, &v_a_friction, &relative_velocity_friction);
+
+            Vec3 tangent_direction;
+            vec3_scale(&constraint.normal, vec3_dot(&relative_velocity_friction, &constraint.normal), &tangent_direction);
+            vec3_sub(&relative_velocity_friction, &tangent_direction, &tangent_direction);
+            
+            float tangent_speed = vec3_length(&tangent_direction);
+            if (tangent_speed > 1e-6f) {
+                vec3_scale(&tangent_direction, 1.0f / tangent_speed, &tangent_direction); // Normalize
+
+                // Calculate tangential effective mass
+                Vec3 r_a_cross_t, r_b_cross_t;
+                vec3_cross(&r_a, &tangent_direction, &r_a_cross_t);
+                vec3_cross(&r_b, &tangent_direction, &r_b_cross_t);
+
+                Vec3 I_inv_r_a_cross_t = mat4_transform_direction(&a->get_inverse_inertia_tensor(), r_a_cross_t);
+                Vec3 I_inv_r_b_cross_t = mat4_transform_direction(&b->get_inverse_inertia_tensor(), r_b_cross_t);
+
+                float angular_component_t = vec3_dot(&I_inv_r_a_cross_t, &r_a_cross_t) + vec3_dot(&I_inv_r_b_cross_t, &r_b_cross_t);
+                float effective_mass_t = inv_mass_a + inv_mass_b + angular_component_t;
+
+                if (effective_mass_t > 1e-6f) {
+                    // Calculate tangential impulse magnitude
+                    float jt = -vec3_dot(&relative_velocity_friction, &tangent_direction) / effective_mass_t;
+
+                    // Apply Coulomb friction model (clamp tangential impulse by normal impulse)
+                    float combined_friction = fminf(a->get_material()->friction, b->get_material()->friction);
+                    float max_friction_impulse = combined_friction * j; // j is the normal impulse magnitude
+
+                    jt = fmaxf(-max_friction_impulse, fminf(jt, max_friction_impulse));
+
+                    // Apply tangential impulse
+                    Vec3 friction_impulse;
+                    vec3_scale(&tangent_direction, jt, &friction_impulse);
+
+                    a->apply_impulse(friction_impulse, contact_point);
+                    Vec3 negative_friction_impulse;
+                    vec3_negate(&friction_impulse, &negative_friction_impulse);
+                    b->apply_impulse(negative_friction_impulse, contact_point);
+                }
+            }
         }
     }
 }
@@ -173,16 +327,12 @@ void Scene::render() {
     // Rendering logic will go here.
 }
 
-void Scene::add_primitive(std::unique_ptr<Primitive> primitive) {
-    physics_bodies.push_back(std::move(primitive));
+void Scene::add_primitive(std::shared_ptr<Primitive> primitive) {
+    physics_bodies.push_back(primitive);
 }
 
-void Scene::add_composite_object(std::unique_ptr<CompositeObject> object) {
-    physics_bodies.push_back(std::move(object));
-}
-
-void Scene::add_joint(std::unique_ptr<Joint> joint) {
-    joints.push_back(std::move(joint));
+void Scene::add_composite_object(std::shared_ptr<CompositeObject> object) {
+    physics_bodies.push_back(object);
 }
 
 void Scene::add_light(std::unique_ptr<Light> light) {

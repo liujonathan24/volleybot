@@ -33,6 +33,7 @@ public:
     void apply_constraint(float dt) override;
 
     void set_motor(float speed, float max_force);
+    float get_relative_speed() const;
 
 private:
     Vec3 motor_axis;

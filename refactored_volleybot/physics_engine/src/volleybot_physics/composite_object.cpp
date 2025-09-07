@@ -4,7 +4,7 @@ CompositeObject::CompositeObject(std::shared_ptr<Material> mat): Primitive(mat) 
     type = PrimitiveType::COMPOSITE;
 }
 
-void CompositeObject::add_part(std::unique_ptr<Primitive> part, Vec3 local_position, Vec3 local_rotation_axis, float local_rotation_angle_rad) {
+int CompositeObject::add_part(std::shared_ptr<Primitive> part, Vec3 local_position, Vec3 local_rotation_axis, float local_rotation_angle_rad) {
     Mat4 translation, rotation;
     mat4_translate(local_position, &translation);
     mat4_rotate(local_rotation_axis, local_rotation_angle_rad, &rotation);
@@ -16,6 +16,29 @@ void CompositeObject::add_part(std::unique_ptr<Primitive> part, Vec3 local_posit
 
     // Recalculate the aggregate properties whenever a new part is added
     compute_mass_and_inertia();
+
+    // Return the index of the part we just added as its ID
+    return parts.size() - 1;
+}
+
+RevoluteJoint* CompositeObject::get_revolute_joint(int joint_id) {
+    if (joint_id >= joints.size()) {
+        return nullptr;
+    }
+    // Use dynamic_cast to ensure the joint is of the correct type
+    return dynamic_cast<RevoluteJoint*>(joints[joint_id].get());
+}
+
+void CompositeObject::add_revolute_joint(int part_id_a, int part_id_b, const Vec3& world_anchor, const Vec3& axis) {
+    if (part_id_a >= parts.size() || part_id_b >= parts.size()) {
+        // Handle error: part ID out of bounds
+        return;
+    }
+
+    Primitive* bodyA = parts[part_id_a].primitive.get();
+    Primitive* bodyB = parts[part_id_b].primitive.get();
+
+    joints.push_back(std::make_unique<RevoluteJoint>(bodyA, bodyB, world_anchor, axis));
 }
 
 void CompositeObject::compute_mass_and_inertia() {
@@ -86,8 +109,7 @@ void CompositeObject::compute_mass_and_inertia() {
 
     // Update Final Properties
     this->inertia_tensor = total_inertia_tensor;
-    // Calculate the inverse.
-    mat4_affine_inverse(&this->inertia_tensor, &this->inverse_inertia_tensor);
+    mat3_inverse(&this->inertia_tensor, &this->inverse_inertia_tensor);
 }
 
 

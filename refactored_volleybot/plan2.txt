@@ -1,0 +1,161 @@
+### **VolleyBot Physics Simulator: Plan v2**
+
+This document outlines the ongoing development plan for the VolleyBot physics simulator. It builds upon the original plan, reflecting the current state of the codebase and incorporating the next set of features focused on robotics, performance, and visualization.
+
+### **1. Core Architecture (Unchanged)**
+
+The overall architecture remains a three-layer system:
+1.  **C Core (`physics_core`):** A pure C library for high-performance vector math and physics algorithms.
+2.  **C++ Layer (`volleybot_physics`):** An object-oriented scene graph that manages primitives, materials, and other simulation objects.
+3.  **Python API (`volleybot_physics` module):** A Python wrapper created with pybind11, providing a simple, RL-friendly interface.
+
+### **2. Current Status**
+
+Significant progress has been made on the initial plan:
+-   The C `physics_core` for `vec3`, `mat4`, and `kinematics` is implemented.
+-   The C++ layer has a functional `Scene` that manages `Primitive` objects (`Sphere`, `Box`, etc.) and `Material` properties.
+-   A basic physics loop (`Scene::step`) is in place which applies gravity and handles collisions.
+-   Collision detection is implemented with a brute-force broadphase and a sphere-vs-sphere narrowphase.
+-   Collision resolution uses a simplified impulse solver and a position-based penetration fix.
+-   The Python API is successfully bound, allowing for the instantiation and basic stepping of a `Scene`.
+
+### **3. Development Roadmap: Next Steps**
+
+This roadmap details the implementation of the next major features.
+
+#### **Phase 1: Advanced Collision System**
+
+The current collision system will be upgraded for performance and accuracy.
+
+1.  **Broadphase Optimization:** Replace the current brute-force O(n^2) check in `Scene::broad_phase` with the **Sweep and Prune** algorithm. This involves creating a list of the min/max bounds of each primitive's AABB on each axis, sorting them, and detecting overlaps efficiently.
+2.  **Impulse-Based Resolution:** Enhance the `Scene::solve_constraints` method to be a full **Impulse-Based Resolution** solver. This involves:
+    -   Correctly calculating the impulse magnitude using the full formula, including the coefficient of restitution from the `Material` struct.
+    -   Incorporating friction (both static and kinetic) to make interactions more realistic.
+    -   Implementing a sequential impulse solver that can handle multiple contact points and resting contact more stably.
+
+#### **Phase 2: Composite Objects & Robotics**
+
+This is the core feature required to simulate a robot.
+
+1.  **`CompositeObject` Class:** Create a new `CompositeObject` class that inherits from `Primitive`. This class will act as a container for a collection of other `Primitive` instances (e.g., the robot's chassis, wheels, arms), each with its own transform relative to the composite object's origin.
+2.  **Hierarchical Collision Detection:** Update the collision detection system to handle `CompositeObject`s. The broadphase will test the aggregate AABB of the composite. If that overlaps, the narrowphase will then need to test each individual primitive within the composite against the other object.
+3.  **`Motor` / `Joint` Class:** Implement a `Motor` or `Joint` class. This will represent a constraint between two primitives (e.g., two parts of a robot arm). It will be responsible for applying forces and/or torques to simulate a physics-accurate motor, which will be controllable from the Python API.
+
+#### **Phase 3: Visualization and GUI**
+
+A real-time viewer is critical for debugging and analysis.
+
+1.  **Rendering Backend:** Implement the `Scene::render` method using **OpenGL** and a simple windowing/UI library like **Dear ImGui** or **GLFW**. This provides a cross-platform, lightweight solution for creating a debug viewer.
+2.  **Phong Shading:** The rendering will be done using the **Phong lighting model**. This requires:
+    -   Expanding the `Material` struct to include distinct ambient, diffuse, and specular color properties.
+    -   Writing GLSL shaders (vertex and fragment) that implement the Phong calculation.
+    -   Passing the `Light` properties (position, color) and `Material` properties from the C++ scene to the shaders for each object.
+    -   Ensuring primitives have correct vertex normals (calculated for analytic shapes like spheres, loaded for meshes).
+3.  **Python Camera Support:** To enable camera views in Python, the C++ `render` function will be modified to support rendering to an offscreen **Framebuffer Object (FBO)**. A new Python-callable function, `scene.get_camera_image(width, height)`, will trigger this offscreen render and copy the resulting pixel data into a NumPy array.
+
+### **4. Updated RL API Design Example**
+
+This example reflects the target API after the above features are implemented.
+
+```python
+# examples/rl_example.py
+
+import volleybot_physics as vbp
+import numpy as np
+# Assume a library like matplotlib or opencv for viewing
+import matplotlib.pyplot as plt
+
+# 1. Initialize the environment
+scene = vbp.Scene()
+
+# 2. Define materials
+robot_material = vbp.Material()
+robot_material.mass = 5.0
+
+# 3. Create a composite object (robot)
+robot = vbp.CompositeObject()
+chassis = vbp.Box(extents=(0.5, 0.2, 0.5), mat=robot_material)
+wheel = vbp.Sphere(radius=0.1, mat=robot_material)
+robot.add_primitive(chassis, position=(0, 0, 0))
+robot.add_primitive(wheel, position=(0.4, -0.2, 0.4))
+# ... add other robot parts
+
+# Add a motor between chassis and a wheel/arm
+robot.add_motor(primitive1_idx=0, primitive2_idx=1, axis=(0,1,0), motor_type='revolute')
+
+# 4. Populate the scene
+scene.add_composite_object(robot)
+scene.add_light(position=(10, 20, 10))
+
+# 5. Main RL Loop
+for episode in range(1000):
+    scene.reset()
+    done = False
+    while not done:
+        # Agent selects an action (e.g., torque for each motor)
+        action = my_agent.get_action(observation)
+
+        # Apply action and step the physics
+        robot.set_motor_torques(action)
+        scene.step(dt=0.016)
+
+        # Get new state for the agent, including camera feed
+        camera_feed = scene.get_camera_image(width=256, height=256)
+        # ... get other state info
+
+        # For debugging, view the camera feed
+        # plt.imshow(camera_feed)
+        # plt.show()
+```
+
+### **5. Proposed File Structure**
+
+This file tree shows the current project structure and where the new files from the roadmap will be added.
+
+```
+/refactored_volleybot/
+├─── plan.txt
+├─── plan2.txt
+├─── setup.py
+├─── examples/
+│    └─── rl_example.py
+└─── physics_engine/
+     ├─── CMakeLists.txt
+     ├─── bindings/
+     │    └─── python_bindings.cpp
+     ├─── include/
+     │    ├─── physics_core/
+     │    │    ├─── collision.h
+     │    │    ├─── kinematics.h
+     │    │    ├─── mat4.h
+     │    │    ├─── vec2.h
+     │    │    └─── vec3.h
+     │    └─── volleybot_physics/
+     │         ├─── camera.h
+     │         ├─── composite_object.h  # NEW: For robots
+     │         ├─── joint.h             # NEW: For motors
+     │         ├─── light.h
+     │         ├─── material.h
+     │         ├─── primitive.h
+     │         ├─── renderer.h          # NEW: For GUI
+     │         └─── scene.h
+     ├─── src/
+     │    ├─── physics_core/
+     │    │    ├─── collision.c
+     │    │    ├─── kinematics.c
+     │    │    ├─── mat4.c
+     │    │    ├─── vec2.c
+     │    │    └─── vec3.c
+     │    ├─── volleybot_physics/
+     │    │    ├─── camera.cpp
+     │    │    ├─── composite_object.cpp # NEW
+     │    │    ├─── joint.cpp            # NEW
+     │    │    ├─── light.cpp
+     │    │    ├─── primitive.cpp
+     │    │    ├─── renderer.cpp         # NEW
+     │    │    └─── scene.cpp
+     │    └─── tinyobj_loader_c.h
+     └─── shaders/                      # NEW: For rendering
+          ├─── phong.frag              # NEW
+          └─── phong.vert              # NEW
+```

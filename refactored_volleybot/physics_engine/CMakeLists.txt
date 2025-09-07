@@ -22,6 +22,8 @@ set(SOURCE_FILES
     src/volleybot_physics/scene.cpp
     src/volleybot_physics/camera.cpp
     src/volleybot_physics/light.cpp
+    src/volleybot_physics/composite_object.cpp
+    src/volleybot_physics/joint.cpp
 )
 
 # Add a library target. We build a SHARED library so it can be loaded by Python.

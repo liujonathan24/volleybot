@@ -36,6 +36,8 @@ public:
 
     Vec3 get_position() const { return position; }
     Vec3 get_velocity() const { return velocity; }
+    Vec3 get_angular_velocity() const { return angular_velocity; }
+    Vec3 get_center_of_mass() const { return center_of_mass; }
     const Mat4& get_transform() const { return transform; }
     const AABB& get_aabb() const { return aabb; }
     const Mat4& get_inertia_tensor() const { return inertia_tensor; }
@@ -46,7 +48,8 @@ public:
     void apply_force(const Vec3& force);
 
     // Applies an impulse at a specific point, affecting both linear and angular velocity
-    void apply_impulse(const Vec3& impulse, const Vec3& contact_point);
+    void apply_impulse(const Vec3& impulse, const Vec3& world_contact_point);
+    void apply_angular_impulse(const Vec3& impulse);
 
 protected:
     // Linear Motion

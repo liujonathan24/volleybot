@@ -29,6 +29,8 @@ void mat4_rotate(Vec3 axis, float angle_rad, Mat4* result);
 void mat4_look_at(Vec3 eye, Vec3 target, Vec3 up, Mat4* result);
 void mat4_perspective(float fov_y_rad, float aspect_ratio, float near_plane, float far_plane, Mat4* result);
 void mat4_affine_inverse(const Mat4* m, Mat4* result);
+void mat3_inverse(const Mat4* m, Mat4* result);
+void mat4_get_translation(const Mat4* m, Vec3* result);
 
 #ifdef __cplusplus
 }

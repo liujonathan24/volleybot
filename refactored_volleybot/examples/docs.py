@@ -1,10 +1,18 @@
-import volleybot_physics as vbp
-# scene = vbp.Scene()
-# # material = vbp.material()
-# # scene.add_primitive("sphere", material)
-# scene.step(0.016)
-# print('Success!')
+# This script demonstrates how to use the `volleybot_physics` Python API
+# to construct and simulate a complex, multi-part rigid body (a simple car).
 
+# Workflow:
+# 1. Create a Scene to hold all objects.
+# 2. Define Materials for the objects.
+# 3. Create a CompositeObject to represent the car.
+# 4. Create Primitive shapes (Box, Sphere) for the chassis and wheels.
+# 5. Add the shapes as parts to the CompositeObject, defining their local positions.
+# 6. Add RevoluteJoints to connect the wheels to the chassis.
+# 7. Add the completed car and a ground plane to the Scene.
+# 8. Run the simulation for a few steps.
+
+
+import volleybot_physics as vbp
 
 def create_car_example():
     """

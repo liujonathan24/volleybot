@@ -12,6 +12,13 @@ typedef struct {
     float x, y, z;
 } Vec3;
 
+#ifdef __cplusplus
+// C++ operator overloads for pybind11
+inline Vec3 operator+(const Vec3& a, const Vec3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+inline Vec3 operator-(const Vec3& a, const Vec3& b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
+inline Vec3 operator*(const Vec3& v, float s) { return {v.x * s, v.y * s, v.z * s}; }
+#endif
+
 /* --- Vector Creation --- */
 void vec3_set(Vec3* output, float x, float y, float z);
 /* --- Core Arithmetic Operations --- */
