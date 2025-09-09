@@ -175,36 +175,31 @@ void Scene::solve_constraints(float dt) {
             // Calculate impulse magnitude (j)
             float j = -(1.0f + e) * velocity_along_normal / effective_mass;
 
-            // Apply impulse
-            Vec3 impulse;
-            vec3_scale(&constraint.normal, j, &impulse);
+            // Calculate tangential velocity
+            Vec3 current_v_a_linear = a->get_velocity();
+            Vec3 current_v_b_linear = b->get_velocity();
+            Vec3 current_v_a_angular, current_v_b_angular;
+            Vec3 ang_vel_a = a->get_angular_velocity();
+            Vec3 ang_vel_b = b->get_angular_velocity();
+            vec3_cross(&ang_vel_a, &r_a, &current_v_a_angular);
+            vec3_cross(&ang_vel_b, &r_b, &current_v_b_angular);
+            Vec3 current_v_a, current_v_b;
+            vec3_add(&current_v_a_linear, &current_v_a_angular, &current_v_a);
+            vec3_add(&current_v_b_linear, &current_v_b_angular, &current_v_b);
 
-            a->apply_impulse(impulse, contact_point);
+            Vec3 current_relative_velocity;
+            vec3_sub(&current_v_b, &current_v_a, &current_relative_velocity);
+
+            // Calculate tangential direction
+            Vec3 tangent_direction_unnormalized;
+            vec3_scale(&constraint.normal, vec3_dot(&current_relative_velocity, &constraint.normal), &tangent_direction_unnormalized);
+            vec3_sub(&current_relative_velocity, &tangent_direction_unnormalized, &tangent_direction_unnormalized);
             
-            Vec3 negative_impulse;
-            vec3_negate(&impulse, &negative_impulse);
-            b->apply_impulse(negative_impulse, contact_point);
-
-            // --- FRICTION IMPULSE ---
-            // Recalculate relative velocity after normal impulse is applied
-            Vec3 v_a_angular_friction, v_b_angular_friction;
-            vec3_cross(&a->get_angular_velocity(), &r_a, &v_a_angular_friction);
-            vec3_cross(&b->get_angular_velocity(), &r_b, &v_b_angular_friction);
-            Vec3 v_a_friction, v_b_friction;
-            vec3_add(&a->get_velocity(), &v_a_angular_friction, &v_a_friction);
-            vec3_add(&b->get_velocity(), &v_b_angular_friction, &v_b_friction);
-
-            Vec3 relative_velocity_friction;
-            vec3_sub(&v_b_friction, &v_a_friction, &relative_velocity_friction);
+            float tangent_speed = vec3_length(&tangent_direction_unnormalized);
+            if (tangent_speed < 1e-6) continue; // No tangential velocity
 
             Vec3 tangent_direction;
-            vec3_scale(&constraint.normal, vec3_dot(&relative_velocity_friction, &constraint.normal), &tangent_direction);
-            vec3_sub(&relative_velocity_friction, &tangent_direction, &tangent_direction);
-            
-            float tangent_speed = vec3_length(&tangent_direction);
-            if (tangent_speed < 1e-6f) continue;
-
-            vec3_scale(&tangent_direction, 1.0f / tangent_speed, &tangent_direction); // Normalize
+            vec3_scale(&tangent_direction_unnormalized, 1.0f / tangent_speed, &tangent_direction); // Normalize
 
             // Calculate tangential effective mass
             Vec3 r_a_cross_t, r_b_cross_t;
@@ -220,7 +215,7 @@ void Scene::solve_constraints(float dt) {
             if (effective_mass_t < 1e-6f) continue;
 
             // Calculate tangential impulse magnitude
-            float jt = -vec3_dot(&relative_velocity_friction, &tangent_direction) / effective_mass_t;
+            float jt = -vec3_dot(&current_relative_velocity, &tangent_direction) / effective_mass_t;
 
             // Apply Coulomb friction model (clamp tangential impulse by normal impulse)
             float combined_friction = fminf(a->get_material()->friction, b->get_material()->friction);

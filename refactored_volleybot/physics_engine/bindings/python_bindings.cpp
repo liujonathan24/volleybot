@@ -46,15 +46,20 @@ PYBIND11_MODULE(volleybot_physics, m) {
     py::class_<Primitive, std::shared_ptr<Primitive>>(m, "Primitive")
         .def("get_position", &Primitive::get_position)
         .def("get_velocity", &Primitive::get_velocity)
-        .def("get_angular_velocity", &Primitive::get_angular_velocity);
+        .def("get_angular_velocity", &Primitive::get_angular_velocity)
+        .def("set_position", &Primitive::set_position, py::arg("pos"));
 
     py::class_<Box, Primitive, std::shared_ptr<Box>>(m, "Box")
         .def(py::init<const Vec3&, std::shared_ptr<Material>>(), 
-             py::arg("extents"), py::arg("material"));
+             py::arg("extents"), py::arg("material"))
+        .def("set_position", &Box::set_position, py::arg("pos"))
+        .def("set_velocity", &Box::set_velocity, py::arg("vel"));
 
     py::class_<Sphere, Primitive, std::shared_ptr<Sphere>>(m, "Sphere")
         .def(py::init<float, std::shared_ptr<Material>>(), 
-             py::arg("radius"), py::arg("material"));
+             py::arg("radius"), py::arg("material"))
+        .def("set_position", &Sphere::set_position, py::arg("pos"))
+        .def("set_velocity", &Sphere::set_velocity, py::arg("vel"));
 
     // --- Joints ---
     py::class_<Joint, std::shared_ptr<Joint>>(m, "Joint"); // Base class
