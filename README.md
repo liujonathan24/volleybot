@@ -1,8 +1,8 @@
 # VOLLEYBOT
 A Reinforcement Learning environment for teaching quad-wheel robots to play volleyball.
 
-![Screenshot of spectator](volleyballenv/envs/assets/mujoco_frame_5.png)
-![Screenshot of robot view](volleyballenv/envs/assets/robot_perspective.png)
+![Screenshot of spectator](volleyballenv/envs/assets/mujoco_frame_5.png){: style="height:83px"}
+![Screenshot of robot view](volleyballenv/envs/assets/robot_perspective.png){: style="height:83px"}
 
 ---
 
