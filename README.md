@@ -3,6 +3,13 @@ A Reinforcement Learning environment for teaching quad-wheel robots to play voll
 
 To begin, run scripts from the scripts/ folder to test out different views.
 
+To see the robot's POV:
+``` python -m agents.camera_livefeed```
+
+To train a basic PPO policy and spectate the robot:
+``` python -m scripts.train_agent_PPO.py ```
+``` python -m scripts.spectate_agent ```
+
 
 Environment structure:
 ├── agents /
