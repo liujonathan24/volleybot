@@ -26,8 +26,8 @@ def main():
 
     model = PPO("MultiInputPolicy", env, verbose=1, n_steps=256, batch_size=64, n_epochs=1)
     t1 = time.time()
-    t_steps = 32768
-    model.learn(total_timesteps=t_steps) # 32768
+    t_steps = 1024
+    model.learn(total_timesteps=t_steps) # 1024
     t2 = time.time()
     print("Trained in ", t2-t1, " seconds.")
 

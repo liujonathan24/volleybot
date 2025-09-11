@@ -15,7 +15,7 @@ env = VolleybotEnv(100, render_mode="rgb_array",
                    viewer="robot")
 
 
-model = PPO.load("ppo_robot_32768steps")
+model = PPO.load("models/ppo_robot_1024steps")
 
 cv2.namedWindow("Volleybot Robot Feed", cv2.WINDOW_NORMAL)
 
