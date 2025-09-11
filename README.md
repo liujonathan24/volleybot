@@ -1,13 +1,22 @@
 # VOLLEYBOT:
 A Reinforcement Learning environment for teaching quad-wheel robots to play volleyball.
 
+# Installation Instructions:
+```
+conda create --name volleybot python=3.12
+conda activate volleybot
+pip install pybind11
+pip install -r requirements.txt
+```
+
+# Testing Instructions:
 To begin, run scripts from the scripts/ folder to test out different views.
 
 To see the robot's POV:
 ``` python -m agents.camera_livefeed```
 
 To train a basic PPO policy and spectate the robot:
-``` python -m scripts.train_agent_PPO.py ```
+``` python -m scripts.stable_agent_PPO ```
 ``` python -m scripts.spectate_agent ```
 
 
@@ -47,19 +56,6 @@ Environment structure:
     │   └── VolleybotEnv.py
     ├── README.md
     └── wrappers /
-
-# Installation Instructions:
-```
-conda create --name volleybot --file requirements.txt
-conda activate volleybot
-```
-
-# Testing Instructions:
-From within the volleybot folder, run:
-``` python -m agents.camera_livefeed```
-
-
-
 
 
 
