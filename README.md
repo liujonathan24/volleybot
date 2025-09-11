@@ -2,8 +2,8 @@
 A Reinforcement Learning environment for teaching quad-wheel robots to play volleyball.
 
 <p float="left">
-  <img src="volleyballenv/envs/assets/mujoco_frame_5.png" alt="Screenshot of spectator" height="150"/>
-  <img src="volleyballenv/envs/assets/robot_perspective.png" alt="Screenshot of robot view" height="150"/>
+  <img src="volleyballenv/envs/assets/mujoco_frame_5.png" alt="Screenshot of spectator" height="300"/>
+  <img src="volleyballenv/envs/assets/robot_perspective.png" alt="Screenshot of robot view" height="300"/>
 </p>
 ---
 
