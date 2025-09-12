@@ -5,6 +5,7 @@ A Reinforcement Learning environment for teaching quad-wheel robots to play voll
   <img src="volleyballenv/envs/assets/mujoco_frame_5.png" alt="Screenshot of spectator" height="300"/>
   <img src="volleyballenv/envs/assets/robot_perspective.png" alt="Screenshot of robot view" height="300"/>
 </p>
+
 ---
 
 ## Installation Instructions
@@ -14,6 +15,9 @@ conda create --name volleybot python=3.12
 conda activate volleybot
 pip install pybind11
 pip install -r requirements.txt
+cd refactored_volleybot
+pip install -e .
+cd ..
 ```
 
 ---

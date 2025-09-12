@@ -91,7 +91,6 @@ typing-inspection==0.4.1
 typing_extensions==4.14.1
 tzdata==2025.2
 urllib3==2.5.0
-volleybot_physics @ file:///Users/Fritz/Workspace/volleybot/refactored_volleybot
 watchfiles==1.1.0
 websockets==15.0.1
 wheel==0.45.1
