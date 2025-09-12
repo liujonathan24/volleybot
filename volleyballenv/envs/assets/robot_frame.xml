@@ -2,24 +2,24 @@
     <!-- <joint type="free"/> 
     <inertial pos="0 0 0" mass="1.0" diaginertia="1 1 1"/>  -->
 
-    <geom mesh="base" type="mesh" material="red"/>
+    <geom mesh="base" type="mesh" material="red" mass="0.1"/>
     <body name="frontleft_wheel">
-        <geom mesh="frontleft_wheel" type="mesh" material="blue"/>
-        <joint name="joint_frontleft_wheel" pos="0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
+        <geom mesh="frontleft_wheel" type="mesh" material="blue" mass="0.1" />
+        <joint name="joint_frontleft_wheel" pos="0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge"/>
     </body>
 
     <body name="frontright_wheel">
-        <geom mesh="frontright_wheel" type="mesh" material="blue" />
-        <joint name="joint_frontright_wheel" pos="-0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
+        <geom mesh="frontright_wheel" type="mesh" material="blue" mass="0.1" />
+        <joint name="joint_frontright_wheel" pos="-0.02087553 -0.03250000 0.00506246" axis="1 0 0" type="hinge" />
     </body>
 
     <body name="backleft_wheel">
-        <geom mesh="backleft_wheel" type="mesh" material="blue"/>
-        <joint name="joint_backleft_wheel" pos="0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" limited="false"/>
+        <geom mesh="backleft_wheel" type="mesh" material="blue" mass="0.1"/>
+        <joint name="joint_backleft_wheel" pos="0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" />
     </body> 
 
     <body name="backright_wheel">
-        <geom mesh="backright_wheel" type="mesh" material="blue"/>
-        <joint name="joint_backright_wheel" pos="-0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge"  limited="false"/>
+        <geom mesh="backright_wheel" type="mesh" material="blue" mass="0.1"/>
+        <joint name="joint_backright_wheel" pos="-0.02087553 0.03250000 0.00506246" axis="1 0 0" type="hinge" />
     </body>
 </body>

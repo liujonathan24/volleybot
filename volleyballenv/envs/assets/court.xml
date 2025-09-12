@@ -38,8 +38,8 @@
 
 <!-- Robot controls -->
   <actuator>
-      <motor name="left_motor" joint="joint_frontleft_wheel" gear="0.001" ctrlrange="-1 1" ctrllimited="true" />
-      <motor name="right_motor" joint="joint_frontright_wheel" gear="0.001" ctrlrange="-1 1" ctrllimited="true"/>
+      <velocity name="left_motor" joint="joint_frontleft_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true" kv="5"/>
+      <velocity name="right_motor" joint="joint_frontright_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true" kv="2"/>
   </actuator>
 
 </mujoco>
