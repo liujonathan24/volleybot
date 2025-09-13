@@ -4,6 +4,8 @@ from gymnasium import utils, spaces
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
 import random
 
+G = 5 # FOR NOW. 9.81 
+
 
 class VolleybotEnv(MujocoEnv, utils.EzPickle):
     metadata = {
@@ -12,7 +14,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     }
 
     def __init__(self, episode_length: int, 
-                 render_mode = "human", obs_space=["bounding_box", "camera"], 
+                 render_mode = "human", obs_space=["bounding_box", "ball_landing_location", "robot_location", "camera"], 
                  reward_type=["proximity", "timing", "accuracy"], noise=False, 
                  random_seed=42, viewer="human", **kwargs):
         utils.EzPickle.__init__(self)
@@ -28,6 +30,10 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "bounding_box" in obs_space:
             # [ball bounding box min x, max x, min y, max y]
             observation_space["bounding_box"] = spaces.Box(low=0, high=1.0, shape=(4, 1), dtype=np.float32)
+        if "ball_landing_location" in obs_space:
+            observation_space["ball_landing_location"] = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        if "robot_location" in obs_space:
+            observation_space["robot_location"] = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         if "camera" in obs_space:
             # 640 by 640 pixel grayscale image.
             observation_space["camera_obs"] = spaces.Box(low=0, high=1.0, shape=(640, 640, 3), dtype=np.float32)
@@ -86,7 +92,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.step_number = 0
         # load the ball in at a random speed and location each episode
         self._init_ball()
-        self.data.joint("robot").qpos[:3] = [0, -0.25, 0.00506246]
+        self.data.joint("robot").qpos[:3] = [0, -0.25, 0.0017]
         self.data.joint("robot").qvel[:6] = [0, 0, 0, 0, 0, 0]
         return self._get_obs(), {} # observation, logging info
 
@@ -95,7 +101,13 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         # Observation of environment fed to agent. 
         observation = {}
         self.camera_obs = np.array(self.render(), dtype=np.int64) 
+        self.camera_obs = self.camera_obs.astype(np.uint8)
 
+        # Ball landing location observation
+        if "ball_landing_location" in self.obs_type:
+            observation["ball_landing_location"] = self.final_ball_loc[:2]
+        if "robot_location" in self.obs_type:
+            observation["robot_location"] = self.data.joint("robot").qpos[:2]
         # Camera observation
         if "camera" in self.obs_type:
             if self.noise:
@@ -167,7 +179,8 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "proximity" in self.reward_type:
             # Normalized to a maximum of 1
             # distance is divided by half the width of the court to avoid imbalanced rewards
-            reward += 1 - np.linalg.norm(self.data.joint("robot").qpos[:3]-self.final_ball_loc)/0.25
+            dist = self.data.joint("robot").qpos[:3]-self.final_ball_loc
+            reward += 1 - np.linalg.norm(dist)/2
         if "timing" in self.reward_type:
             # Add a reward for hitting the ball
             # TODO: Think about how this will work. 
@@ -204,7 +217,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         width  = 0.25
         length = 0.5
         net_height = 0.135 
-        g = 9.81
+        g = G
         r = 0.02
 
         # Random initial and final positions
@@ -235,7 +248,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.final_ball_loc = [init_x_pos, init_y_pos, 0.02]
         # print("Ball Initiation Statistics: ")
         # print("Initial position of the ball: ", [init_x_pos, init_y_pos])
-        print("\nProjected landing position of the ball: ", [final_x_pos, final_y_pos])
+        # print("\nProjected landing position of the ball: ", [final_x_pos, final_y_pos])
         # print("Initial velocity of the ball: ", [float(i) for i in [init_x_vel, init_y_vel, init_z_vel]])
         # print()
 
@@ -248,7 +261,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         ball_velocity = ball_object.qvel[:3]  # [vx, vy, vz]
         z_0 = ball_position[2]  # Initial z-position
         v_z = ball_velocity[2]  # Initial z-velocity
-        g = 9.81 
+        g = G
 
         time_to_land = (v_z+np.sqrt(v_z**2+2*g*(z_0)))/g
 
@@ -277,6 +290,6 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
             done = True
         robot_x, robot_y = self.data.joint("robot").qpos[:2]
         if robot_x > 0.25 or robot_x < -0.25 or robot_y > 0.5 or robot_y < -0.5:
-            print("done due to robot out of position")
+            # print("done due to robot out of position")
             done = True
         return done

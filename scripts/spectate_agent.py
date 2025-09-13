@@ -7,15 +7,15 @@ import numpy as np
 from stable_baselines3 import PPO
 from volleyballenv.envs.VolleybotEnv import VolleybotEnv
 
+t = 32768
 
 glfw.init()
 
 env = VolleybotEnv(100, render_mode="rgb_array", 
-                   obs_space=["bounding_box", "camera"], random_seed=0,
-                   viewer="robot")
+                   obs_space=["ball_landing_location", "robot_location"], random_seed=0,
+                   )
 
-
-model = PPO.load("models/ppo_robot_1024steps")
+model = PPO.load(f"models/ppo_robot_{t}steps")
 
 cv2.namedWindow("Volleybot Robot Feed", cv2.WINDOW_NORMAL)
 
@@ -51,7 +51,7 @@ while True:
         # Display the frame in the OpenCV window
         cv2.imshow("Volleybot Camera Feed", frame_bgr)
         
-    time.sleep(0.1)
+    time.sleep(0.05)
     # Exit early by pressing 'q'
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

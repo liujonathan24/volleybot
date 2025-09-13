@@ -29,7 +29,7 @@ def main(args):
  
     # Initialize the environment
     env = VolleybotEnv(100, render_mode="rgb_array", 
-                    obs_space=["bounding_box", "camera"], random_seed=0,
+                    obs_space=["ball_landing_location"], random_seed=0,
                     viewer="robot")
     
     # Training loop:
