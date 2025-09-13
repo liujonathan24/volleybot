@@ -11,17 +11,15 @@
 
     <!-- Car assets -->
     <mesh name="base" file="base.stl" />
-    <mesh name="frontleft_wheel" file="frontleft_wheel.stl" />
-    <mesh name="frontright_wheel" file="frontright_wheel.stl"/>
-    <mesh name="backleft_wheel" file="backleft_wheel.stl" />
-    <mesh name="backright_wheel" file="backright_wheel.stl"/>
+    <mesh name="left" file="left.stl" />
+    <mesh name="right" file="right.stl"/>
     <material name="red" rgba="0.8 0.1 0.1 1"/>
     <material name="blue" rgba="0.1 0.1 0.8 1"/>
   </asset>
 
   <worldbody>
     <light name="light" pos="0 0 1"/>
-    <geom name="floor" type="plane" pos="0 0 0" size=".25 .5 .1" rgba="1 1 1 1" solref="0.02 0.3" friction="3 0.005 0.0001" material="grid"/>
+    <geom name="floor" type="plane" pos="0 0 0" size=".25 .5 .1" rgba="1 1 1 1" solref="0.02 0.3" material="grid" contype="1" conaffinity="1"/>
     <camera name="fixed" pos="1 0 .25" xyaxes=".75 0 0 0 .05 .95"/>
 
     <body name="ball" pos="0 0.25 0.2">
@@ -38,8 +36,8 @@
 
 <!-- Robot controls -->
   <actuator>
-      <velocity name="left_motor" joint="joint_frontleft_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true" kv="5"/>
-      <velocity name="right_motor" joint="joint_frontright_wheel" gear="0.01" ctrlrange="-1 1" ctrllimited="true" kv="2"/>
+      <velocity name="left_motor" joint="joint_left_wheel" gear="-0.01" ctrlrange="-1 1" ctrllimited="true" kv="5"/>
+      <velocity name="right_motor" joint="joint_right_wheel" gear="-0.01" ctrlrange="-1 1" ctrllimited="true" kv="5"/>
   </actuator>
 
 </mujoco>
