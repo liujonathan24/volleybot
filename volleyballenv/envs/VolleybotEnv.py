@@ -14,7 +14,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
     }
 
     def __init__(self, episode_length: int, 
-                 render_mode = "human", obs_space=["bounding_box", "ball_landing_location", "robot_location", "camera"], 
+                 render_mode = "human", obs_space=["bounding_box", "ball_landing_location", "robot_location", "robot_angle" "camera"], 
                  reward_type=["proximity", "timing", "accuracy"], noise=False, 
                  random_seed=42, viewer="human", **kwargs):
         utils.EzPickle.__init__(self)
@@ -33,7 +33,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "ball_landing_location" in obs_space:
             observation_space["ball_landing_location"] = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         if "robot_location" in obs_space:
-            observation_space["robot_location"] = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+            observation_space["robot_location"] = spaces.Box(low=-1, high=1.0, shape=(7,), dtype=np.float32)
         if "camera" in obs_space:
             # 640 by 640 pixel grayscale image.
             observation_space["camera_obs"] = spaces.Box(low=0, high=1.0, shape=(640, 640, 3), dtype=np.float32)
@@ -68,6 +68,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.hit_ball = False
         self.previous_observations = []
         self.previous_rewards = []
+        self.previous_action = None
 
         self._init_ball()
 
@@ -79,9 +80,12 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         self.step_number += 1
 
         obs = self._get_obs()
-        reward = self._get_reward()
+        reward = self._get_reward(action)
         done = self._get_done()
         truncated = self.step_number > self.episode_len
+
+        self.previous_action = action
+
         return obs, reward, done, truncated, {}
 
 
@@ -90,9 +94,10 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         (but not the same position as when the environment is initiated)"""
         # Reset model to original state. 
         self.step_number = 0
+        self.previous_action = None
         # load the ball in at a random speed and location each episode
         self._init_ball()
-        self.data.joint("robot").qpos[:3] = [0, -0.25, 0.0017]
+        self.data.joint("robot").qpos = [0, -0.25, 0.0017, 0, 0, 0, 0]
         self.data.joint("robot").qvel[:6] = [0, 0, 0, 0, 0, 0]
         return self._get_obs(), {} # observation, logging info
 
@@ -107,7 +112,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         if "ball_landing_location" in self.obs_type:
             observation["ball_landing_location"] = self.final_ball_loc[:2]
         if "robot_location" in self.obs_type:
-            observation["robot_location"] = self.data.joint("robot").qpos[:2]
+            observation["robot_location"] = self.data.joint("robot").qpos
         # Camera observation
         if "camera" in self.obs_type:
             if self.noise:
@@ -173,14 +178,31 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         return observation
     
     
-    def _get_reward(self):
+    def _get_reward(self, action):
         """Returns a reward for a given state."""
         reward = 0
         if "proximity" in self.reward_type:
             # Normalized to a maximum of 1
             # distance is divided by half the width of the court to avoid imbalanced rewards
-            dist = self.data.joint("robot").qpos[:3]-self.final_ball_loc
+            dist = self.data.joint("robot").qpos[:2]-self.final_ball_loc[:2]
+            # print(self.data.joint("robot").qpos[:2], self.final_ball_loc[:2])
             reward += 1 - np.linalg.norm(dist)/2
+
+            dist = np.linalg.norm(self.data.joint("robot").qpos[:2] - self.final_ball_loc[:2])
+
+            # Dense proximity shaping
+            reward += 1 - dist*4
+
+            # Success bonus
+            if dist < 0.05:  # tolerance radius
+                reward += 10
+
+            # Step penalty
+            reward -= 0.01
+
+            # Abrupt change penalty
+            if self.previous_action is not None:
+                reward -= 1 * np.sum(np.square(action-self.previous_action))
         if "timing" in self.reward_type:
             # Add a reward for hitting the ball
             # TODO: Think about how this will work. 
@@ -286,7 +308,7 @@ class VolleybotEnv(MujocoEnv, utils.EzPickle):
         area. """
         done = False
         if not self._landing_location(self.data.joint("ball"), location="opponent") and not self._landing_location(self.data.joint("ball"), location="robot"):
-            print("Done due to landing position")
+            # print("Done due to landing position")
             done = True
         robot_x, robot_y = self.data.joint("robot").qpos[:2]
         if robot_x > 0.25 or robot_x < -0.25 or robot_y > 0.5 or robot_y < -0.5:

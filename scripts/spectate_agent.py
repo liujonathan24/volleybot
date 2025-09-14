@@ -7,15 +7,17 @@ import numpy as np
 from stable_baselines3 import PPO
 from volleyballenv.envs.VolleybotEnv import VolleybotEnv
 
-t = 32768
+t = 1048576
+# 8192 # 8192 # 1024 # 32768
+model = "ppo" #"ppo"
 
 glfw.init()
 
-env = VolleybotEnv(100, render_mode="rgb_array", 
+env = VolleybotEnv(256, render_mode="rgb_array", 
                    obs_space=["ball_landing_location", "robot_location"], random_seed=0,
                    )
 
-model = PPO.load(f"models/ppo_robot_{t}steps")
+model = PPO.load(f"models/{model}_robot_{t}steps")
 
 cv2.namedWindow("Volleybot Robot Feed", cv2.WINDOW_NORMAL)
 
